@@ -19,6 +19,7 @@ var testSocketIO = require('./test-socketio');
 var testExpress = require('./test-express');
 var testBodyParser = require('./test-body-parser');
 var testArchiver = require('./test-archiver');
+var testTmp = require('./test-tmp');
 
 var globalfs = new testfs();
 var globalMkdirp = new testMkdirp(globalfs);
@@ -27,6 +28,7 @@ var globalSocketIO = new testSocketIO();
 var globalExpress = new testExpress();
 var globalBodyParser = new testBodyParser();
 var globalArchiver = new testArchiver();
+var globalTmp = new testTmp(globalfs);
 
 globalfs['@global'] = true;
 testRequest.request['@global'] = true;
@@ -38,6 +40,7 @@ globalExpress.create['@global'] = true;
 globalExpress.create['static'] = globalExpress.static;
 globalBodyParser['@global'] = true;
 globalArchiver.archive['@global'] = true;
+globalTmp['@global'] = true;
 
 var proxyquire = require('proxyquire').noCallThru();
 
@@ -83,7 +86,8 @@ TestCommon.require = function (dirname, name) {
     'http': globalHttp,
     'express': globalExpress.create,
     'body-parser': globalBodyParser,
-    'archiver': globalArchiver.archive
+    'archiver': globalArchiver.archive,
+    'temp': globalTmp
   });
 };
 

@@ -627,7 +627,7 @@ describe('RQTree', function () {
                             expect(err).toBeFalsy();
                             c.expectLocalFileExist('/remoteme/file3', false, false, function () {
                               expect(c.testShare.emit).toHaveBeenCalledWith('syncconflict', {path: '/removeme/file3'});
-                              expect(c.testShare.emit.calls.length).toEqual(2);
+                              expect(c.testShare.emit).toHaveBeenCalledWith('syncconflict', {path: '/removeme/file1'});
                               done();
                             });
                           });

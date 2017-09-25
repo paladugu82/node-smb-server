@@ -151,7 +151,7 @@ describe('RQProcessor', function () {
           c.expectLocalFileExist('/testfile', true, false, function () {
             c.expectQueuedMethod('/', 'testfile', false, function () {
               expect(processor.emit).toHaveBeenCalledWith('syncstart', {path: '/testfile', file: '/local/path/testfile', method: 'POST'});
-              expect(processor.emit).toHaveBeenCalledWith('syncprogress', {path: '/testfile', file: '/local/path/testfile', read: jasmine.any(Number), total: jasmine.any(Number), rate: jasmine.any(Number)});
+              expect(processor.emit).toHaveBeenCalledWith('syncprogress', {path: '/testfile', file: '/local/path/testfile', read: jasmine.any(Number), total: jasmine.any(Number), rate: jasmine.any(Number), elapsed: jasmine.any(Number)});
               expect(processor.emit).toHaveBeenCalledWith('syncend', {path: '/testfile', file: '/local/path/testfile', method: 'POST'});
               done();
             });
@@ -170,7 +170,7 @@ describe('RQProcessor', function () {
               expect(err).toBeFalsy();
               c.expectQueuedMethod('/', 'testfile', false, function () {
                 expect(processor.emit).toHaveBeenCalledWith('syncstart', {path: '/testfile', file: '/local/path/testfile', method: 'PUT'});
-                expect(processor.emit).toHaveBeenCalledWith('syncprogress', {path: '/testfile', file: '/local/path/testfile', read: jasmine.any(Number), total: jasmine.any(Number), rate: jasmine.any(Number)});
+                expect(processor.emit).toHaveBeenCalledWith('syncprogress', {path: '/testfile', file: '/local/path/testfile', read: jasmine.any(Number), total: jasmine.any(Number), rate: jasmine.any(Number), elapsed: jasmine.any(Number)});
                 expect(processor.emit).toHaveBeenCalledWith('syncend', {path: '/testfile', file: '/local/path/testfile', method: 'PUT'});
                 done();
               });
