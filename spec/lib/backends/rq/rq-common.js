@@ -71,6 +71,7 @@ function RQCommon(config) {
   };
 
   var context = new SMBContext().withLabel('UnitTest');
+  self.testContext = context;
 
   // set up remote
   var remoteShare = new FSShare('remote', self.config.remote);
@@ -328,7 +329,7 @@ RQCommon.prototype.expectFileModifiedDate = function (path, modifiedTime, toEqua
 };
 
 RQCommon.prototype.expectQueuedMethod = function (path, name, method, cb) {
-  this.testTree.rq.getRequests(this.testTree, path, function (err, lookup) {
+  this.testTree.rq.getRequests(this.testContext, path, function (err, lookup) {
     expect(err).toBeFalsy();
     if (method) {
       expect(lookup[name]).toEqual(method);
