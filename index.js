@@ -12,7 +12,7 @@
 
 'use strict';
 
-var init = require('./lib/logging');
-init(null, function () {
+var logger = require('./lib/logging');
+logger.init(null, function () {
   require('./lib/server');
 });
