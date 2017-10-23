@@ -13,6 +13,6 @@
 'use strict';
 
 var logger = require('./lib/logging');
-logger.init(null, function () {
+logger.init('./logging.json', function () {
   require('./lib/server');
 });
