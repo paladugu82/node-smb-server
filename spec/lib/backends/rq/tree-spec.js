@@ -551,6 +551,15 @@ describe('RQTree', function () {
         });
       });
     });
+
+    it('testListFileNoExist', function (done) {
+      // test listing a single item that doesn't exist
+      c.testTree.list('/noexist', function (err, files) {
+        expect(err).toBeFalsy();
+        expect(files.length).toEqual(0);
+        done();
+      });
+    });
   });
 
   describe('DeleteLocalDirectoryRecursive', function () {
