@@ -17,61 +17,89 @@ var TestStream = require('./test-stream');
 
 var requestedUrls = {};
 var urls;
-var statusCodes;
-var createCb = function (url, data, cb) {
+var dataz;
+var requestCb = function (url, method, headers, cb) {
   cb();
 }
 
-var updateCb = function (url, data, cb) {
-  cb();
-}
-
-var deleteCb = function (url, cb) {
-  cb();
-}
-
-function TestRequest(options, endCb) {
+function TestRequest(options) {
   TestStream.call(this, 'test-request');
 
   this.url = options.url;
+  this.headers = options.headers || {};
   this.method = options.method || 'GET';
   this.aborted = false;
   this.statusCode = 501;
-  this.endCb = endCb;
+  this.resCb = false;
 }
 
 util.inherits(TestRequest, TestStream);
+
+function setData(url, headers, data) {
+  dataz[url] = {headers: headers, data: data};
+};
 
 TestRequest.prototype.setStatusCode = function (statusCode) {
   this.statusCode = statusCode;
 };
 
+TestRequest.prototype.setResponseCallback = function (callback) {
+  var self = this;
+  this.setReadStream(function (readCb) {
+    callback(self.url, self.headers, function (err, statusCode, data) {
+      readCb(err, data);
+    });
+  });
+  this.resCb = callback;
+};
+
 TestRequest.prototype.end = function (data, encoding, cb) {
   var self = this;
 
-  function _doEnd() {
-    var res = new TestResponse(self.statusCode, '');
-    if (cb) {
-      cb(null, res);
+  function _doEnd(err, statusCode, data) {
+    if (err) {
+      self.emit('error', err);
+      if (cb) {
+        cb(err);
+      }
+    } else {
+      if (!statusCode) {
+        statusCode = self.statusCode;
+      }
+      var res = new TestResponse(statusCode);
+
+      if (data) {
+        res.end(data);
+      } else {
+        res.end();
+      }
+
+      self.emit('response', res);
+      if (cb) {
+        cb(null, res);
+      }
     }
-    self.emit('end');
-    self.emit('response', res);
-    if (self.endCb) {
-      self.endCb(null, res);
-    }
-    res.emit('end');
   }
 
   TestStream.prototype.end(data, encoding, function (err) {
     if (!err) {
       if (self.method == 'POST') {
-        createCb(self.url, data, _doEnd);
+        setData(self.url, self.headers, self.getWritten());
+        requestCb(self.url, self.method, self.headers, _doEnd);
       } else if (self.method == 'PUT') {
-        updateCb(self.url, data, _doEnd);
+        setData(self.url, self.headers, self.getWritten());
+        requestCb(self.url, self.method, self.headers, _doEnd);
       } else if (self.method == 'DELETE') {
-        deleteCb(self.url, _doEnd);
+        dataz[self.url] = undefined;
+        requestCb(self.url, self.method, self.headers, _doEnd);
+      } else if (self.resCb) {
+        self.resCb(self.url, self.headers, function (err, statusCode, data) {
+          requestCb(self.url, self.method, self.headers, function () {
+            _doEnd(err, statusCode, data);
+          });
+        });
       } else {
-        _doEnd();
+        requestCb(self.url, self.method, self.headers, _doEnd);
       }
     }
   });
@@ -101,43 +129,44 @@ function addRequestedUrl(url, method) {
 
 function clearAll() {
   requestedUrls = {};
-  urls = [];
-  statusCodes = {};
+  urls = {};
+  dataz = {};
 };
 
 function request(options, cb) {
   var method = options.method ? options.method : 'GET';
   addRequestedUrl(options.url, method);
 
-  var statusCode = 404;
-  var req = new TestRequest(options, cb);
-  if (method == 'GET') {
-    if (urls[options.url]) {
-      req.setReadStream(urls[options.url]);
+  var req = new TestRequest(options);
+  req.on('error', function (err) {
+    // caught error event to avoid crash
+  });
+  if (urls[options.url]) {
+    req.setResponseCallback(urls[options.url]);
+  } else if (dataz[options.url] && (method == 'DELETE' || method == 'PUT' || method == 'GET')) {
+    if (method == 'GET') {
+      req.setResponseCallback(function (url, headers, resCb) {
+        resCb(null, 200, dataz[options.url]);
+      });
     } else {
-      statusCode = 404;
+      req.setStatusCode(200);
     }
   } else if (method == 'POST') {
-    // insert
-    statusCode = 201;
-  } else if (method == 'PUT') {
-    if (urls[options.url]) {
-      statusCode = 200;
-    }
-  } else if (method == 'DELETE') {
-    if (urls[options.url]) {
-      statusCode = 200;
-    }
-    // end deletes immediately because there is no streaming
-    // involved
-    req.end();
+    req.setStatusCode(201);
+  } else {
+    req.setStatusCode(404);
   }
 
-  if (statusCodes[options.url]) {
-    statusCode = statusCodes[options.url];
+  if (cb) {
+    req.end(null, null, function (err, res) {
+      if (err) {
+        cb(err);
+      } else {
+        cb(null, res, res.getWritten());
+      }
+    });
   }
 
-  req.setStatusCode(statusCode);
   return req;
 };
 
@@ -145,20 +174,12 @@ function registerUrl(url, callback) {
   urls[url] = callback;
 }
 
-function registerCreate(cb) {
-  createCb = cb;
-}
-
-function registerUpdate(cb) {
-  updateCb = cb;
-}
-
-function registerDelete(cb) {
-  deleteCb = cb;
+function setRequestCallback(callback) {
+  requestCb = callback;
 }
 
 function registerUrlStatusCode(url, statusCode) {
-  statusCodes[url] = statusCode;
+  //statusCodes[url] = statusCode;
 }
 
 function getUrlMethodRequestCount(url, method) {
@@ -174,12 +195,21 @@ function wasUrlRequested(url) {
   return (getUrlMethodRequestCount(url, 'GET') >= 0);
 }
 
+function printRegisteredUrls() {
+  console.log('urls', urls);
+  console.log('datas', dataz);
+}
+
+function printRequestedUrls() {
+  console.log('requested urls', requestedUrls);
+}
+
 module.exports.request = request;
 module.exports.clearAll = clearAll;
 module.exports.registerUrl = registerUrl;
-module.exports.registerCreate = registerCreate;
-module.exports.registerUpdate = registerUpdate;
-module.exports.registerDelete = registerDelete;
+module.exports.setRequestCallback = setRequestCallback;
 module.exports.registerUrlStatusCode = registerUrlStatusCode;
 module.exports.wasUrlRequested = wasUrlRequested;
 module.exports.getUrlMethodRequestCount = getUrlMethodRequestCount;
+module.exports.printRegisteredUrls = printRegisteredUrls;
+module.exports.printRequestedUrls = printRequestedUrls;

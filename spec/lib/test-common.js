@@ -20,6 +20,7 @@ var testExpress = require('./test-express');
 var testBodyParser = require('./test-body-parser');
 var testArchiver = require('./test-archiver');
 var testTmp = require('./test-tmp');
+var testStream = require('./test-stream');
 
 var globalfs = new testfs();
 var globalMkdirp = new testMkdirp(globalfs);
@@ -41,6 +42,7 @@ globalExpress.create['static'] = globalExpress.static;
 globalBodyParser['@global'] = true;
 globalArchiver.archive['@global'] = true;
 globalTmp['@global'] = true;
+testStream['@global'] = true;
 
 var proxyquire = require('proxyquire').noCallThru();
 
@@ -87,7 +89,8 @@ TestCommon.require = function (dirname, name) {
     'express': globalExpress.create,
     'body-parser': globalBodyParser,
     'archiver': globalArchiver.archive,
-    'temp': globalTmp
+    'temp': globalTmp,
+    'stream': testStream
   });
 };
 

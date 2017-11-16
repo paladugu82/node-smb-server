@@ -20,6 +20,8 @@ var TestTreeConnection = common.require(__dirname, '../test/treeconnection');
 var TestTree = common.require(__dirname, '../test/tree');
 var TestShare = common.require(__dirname, '../test/share');
 var FSTreeConnection = common.require(__dirname, '../../../../lib/backends/fs/treeconnection');
+var RQRemoteShare = common.require(__dirname, '../../../../lib/backends/rq/remoteshare');
+var RQRemoteTreeConnection = common.require(__dirname, '../../../../lib/backends/rq/remotetreeconnection');
 var FSTree = common.require(__dirname, '../../../../lib/backends/fs/tree');
 var FSShare = common.require(__dirname, '../../../../lib/backends/fs/share');
 var util = require('util');
@@ -46,11 +48,8 @@ function RQCommon(config) {
   self.config = {
     backend: 'rqtest',
     modifiedThreshold: 100,
-    remote: {
-      backend: 'remotefs',
-      description: 'test remote share',
-      path: self.remotePrefix
-    },
+    description: 'test remote share',
+    path: self.remotePrefix,
     local: {
       backend: 'localfs',
       description: 'test local share',
@@ -73,19 +72,27 @@ function RQCommon(config) {
   var context = new SMBContext().withLabel('UnitTest');
   self.testContext = context;
 
-  // set up remote
-  var remoteShare = new FSShare('remote', self.config.remote);
-  self.remoteTreeConnection = new TestTreeConnection(remoteShare, self.urlPrefix, self.request);
-  self.remoteTree = self.remoteTreeConnection.createTree(context);
-
-  // set up local
-  var localShare = new FSShare('local', self.config.local);
-  self.localTreeConnection = new FSTreeConnection(localShare);
-
-  // set up RQ
+  // // set up remote
+  // //var remoteShare = new FSShare('remote', self.config.remote);
+  // var remoteShare = new RQRemoteShare('remote', self.config);
+  // //self.remoteTreeConnection = new TestTreeConnection(remoteShare, self.urlPrefix, self.request);
+  // self.remoteTreeConnection = new RQRemoteTreeConnection(remoteShare);
+  // self.remoteTree = self.remoteTreeConnection.createTree(context);
+  //
+  // // set up local
+  // var localShare = new FSShare('local', self.config.local);
+  // self.localTreeConnection = new FSTreeConnection(localShare);
+  //
+  // // set up RQ
+  // self.testShare = new RQShare('rq', self.config);
+  // self.testTreeConnection = new RQTreeConnection(self.testShare, self.remoteTreeConnection, self.config);
+  // self.testTree = new RQTree(self.testTreeConnection, context, self.remoteTree, self.localTreeConnection.createTree(context));
   self.testShare = new RQShare('rq', self.config);
-  self.testTreeConnection = new RQTreeConnection(self.testShare, self.remoteTreeConnection, self.config);
-  self.testTree = new RQTree(self.testTreeConnection, context, self.remoteTree, self.localTreeConnection.createTree(context));
+  var remoteShare = self.testShare.remote;
+  self.remoteTreeConnection = new RQRemoteTreeConnection(remoteShare);
+  self.testTreeConnection = self.testShare.createTree(self.remoteTreeConnection, self.config);
+  self.testTree = self.testTreeConnection.createTree(context);
+  self.remoteTree = self.testTree.remote;
   self.localTree = self.testTree.local;
   self.localRawTree = self.localTree.source;
 
@@ -95,46 +102,47 @@ function RQCommon(config) {
     return path;
   }
 
-  self.request.registerCreate(function (url, data, cb) {
-    self.remoteTree.createFile(_pathFromUrl(url), function (err, file) {
-      expect(err).toBeFalsy();
-      file.write(data, 0, function (err) {
-        expect(err).toBeFalsy();
-        file.close(function (err) {
-          expect(err).toBeFalsy();
-          cb();
-        });
-      });
-    });
+  self.folderStructure = {
+    '/': {
+      entities:[],
+      class:['assets/folder'],
+      properties: {
+        'jcr:created': '2017-10-04T21:09:32.035Z',
+        name: 'assets'
+      }
+    }
+  };
+  self.jsonSelector = '.json?limit=9999&showProperty=jcr:created&showProperty=jcr:lastModified&showProperty=asset:size&showProperty=asset:readonly&showProperty=cq:drivelock';
+  var rootJsonUrl = 'http://' + self.config.host + ':' + self.config.port + '/api/assets' + self.config.path + self.jsonSelector;
+  self.request.registerUrl(rootJsonUrl, function (url, headers, cb) {
+    cb(null, 200, JSON.stringify(self.folderStructure['/']));
   });
 
-  self.request.registerUpdate(function (url, data, cb) {
-    self.remoteTree.open(_pathFromUrl(url), function (err, file) {
-      if (err) {
-        console.log('ERROR WHILE UPDATING FROM REQUEST', err);
-        cb();
-      } else {
-        file.setLength(data.length, function (err) {
-          expect(err).toBeFalsy();
-          file.write(data, 0, function (err) {
-            expect(err).toBeFalsy();
-            file.close(function (err) {
-              expect(err).toBeFalsy();
-              cb();
-            });
-          });
+  self.request.setRequestCallback(function (url, method, headers, cb) {
+    if (method == 'POST') {
+      var toStrip = self.urlPrefix + self.remotePrefix;
+      if (url.indexOf(toStrip) >= 0) {
+        var jsonUrl = url + self.jsonSelector;
+        var path = url.substr(toStrip.length);
+        var parent = utils.getParentPath(path);
+        var name = utils.getPathName(path);
+        var entityData = {
+          class: ['assets/asset'],
+          properties: {
+            'asset:readonly':false,
+            'jcr:created':"2017-11-06T17:19:22.157-07:00",
+            'jcr:lastModified':"2017-11-06T17:22:35.125-07:00",
+            name: name,
+            'asset:size':20700020
+          }
+        };
+        self.folderStructure[parent]['entities'].push(entityData);
+        self.request.registerUrl(jsonUrl, function (url, headers, jsonCallback) {
+          jsonCallback(null, 200, JSON.stringify(entityData));
         });
       }
-    });
-  });
-
-  self.request.registerDelete(function (url, cb) {
-    self.remoteTree.delete(_pathFromUrl(url), function (err) {
-      if (err) {
-        console.log('ERROR WHILE DELETING FROM REQUEST', err);
-      }
-      cb();
-    });
+    }
+    cb();
   });
 
   spyOn(self.remoteTree, 'exists').andCallThrough();
@@ -165,8 +173,25 @@ RQCommon.prototype.getPathMethodRequestCount = function (path, method) {
   return this.request.getUrlMethodRequestCount(this.urlPrefix + path, method);
 };
 
+RQCommon.prototype.registerUrl = function (path, cb) {
+  this.request.registerUrl(this.urlPrefix + this.remotePrefix + path, cb);
+};
+
+RQCommon.prototype.registerInfoUrl = function (path, cb) {
+  if (path == '/') {
+    path = '';
+  }
+  this.request.registerUrl(this.urlPrefix + this.remotePrefix + path + this.jsonSelector, cb);
+};
+
 RQCommon.prototype.registerPathStatusCode = function (path, statusCode) {
   this.request.registerUrlStatusCode(this.urlPrefix + path, statusCode);
+};
+
+RQCommon.prototype.setRemoteFileReadOnly = function (path, readOnly) {
+  if (this.folderStructure[path]) {
+    this.folderStructure[path].properties['asset:readonly'] = readOnly;
+  }
 };
 
 RQCommon.prototype.getFileContent = function (file, cb) {

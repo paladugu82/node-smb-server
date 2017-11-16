@@ -23,6 +23,14 @@ function TestStream(target) {
 
 util.inherits(TestStream, EventEmitter);
 
+TestStream.PassThrough = function () {
+  var stream = new TestStream();
+  stream.setReadStream(function (cb) {
+    cb();
+  });
+  return stream;
+};
+
 TestStream.prototype.setPipeDelay = function (delay) {
   this.pipeDelay = delay;
 };
@@ -39,7 +47,9 @@ TestStream.prototype.write = function (chunk, encoding, cb) {
 };
 
 TestStream.prototype.end = function (data, encoding, cb) {
-  this.written += data;
+  if (data) {
+    this.written += data;
+  }
   this.emit('finish');
   if (cb) {
     cb();
@@ -74,6 +84,10 @@ TestStream.prototype.pipe = function (other) {
   } else {
     throw 'Test stream is not a read stream';
   }
+};
+
+TestStream.prototype.getWritten = function () {
+  return this.written;
 };
 
 module.exports = TestStream;

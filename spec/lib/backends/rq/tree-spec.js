@@ -1671,4 +1671,173 @@ describe('RQTree', function () {
       });
     });
   });
+
+  describe('NetworkIssues', function () {
+    it('testExistsRemoteFailure', function (done) {
+      c.addFile(c.remoteTree, '/testfile', function () {
+        c.testShare.invalidateContentCache(c.testTree, '/');
+        c.registerUrl('/testfile.json', function (url, headers, cb) {
+          cb('forced unit test error');
+        });
+        c.testTree.exists('/testfile', function (err, exists) {
+          expect(err).toBeFalsy();
+          expect(exists).toBeFalsy();
+          done();
+        });
+      });
+    });
+
+    it('testOpenRemoteFailure', function (done) {
+      c.addFile(c.remoteTree, '/testfile', function () {
+        c.testShare.invalidateContentCache(c.testTree, '/');
+        var errorThrown = false;
+        c.registerInfoUrl('/', function (url, headers, cb) {
+          errorThrown = true;
+          cb('forced unit test error');
+        });
+        c.testTree.open('/testfile', function (err, file) {
+          expect(err).toBeTruthy();
+          expect(file).toBeFalsy();
+          expect(errorThrown).toBeTruthy();
+          done();
+        });
+      });
+    });
+
+    it('testListRemoteFailure', function (done) {
+      c.addCachedFile('/testcached.jpg', function () {
+        c.addFile(c.remoteTree, '/testremote.jpg', function () {
+          c.addQueuedFile('/testlocal.jpg', function () {
+            c.testShare.invalidateContentCache(c.testTree, '/');
+            c.registerInfoUrl('/', function (url, headers, cb) {
+              cb('forced unit test error');
+            });
+            c.testTree.list('/*', function (err, list) {
+              expect(err).toBeFalsy();
+              expect(list.length).toEqual(2);
+              done();
+            });
+          });
+        });
+      });
+    });
+
+    it('testRefreshWorkFilesFailure', function (done) {
+      c.addCachedFile('/testcached.jpg', function () {
+        c.testShare.invalidateContentCache(c.testTree, '/');
+        var errorThrown = false;
+        c.registerInfoUrl('/', function (url, headers, cb) {
+          errorThrown = true;
+          cb('forced unit test error');
+        });
+        c.testTree.refreshWorkFiles('/', function (err) {
+          expect(err).toBeFalsy();
+          expect(errorThrown).toBeTruthy();
+          c.expectLocalFileExist('/testcached.jpg', true, false, done);
+        });
+      });
+    });
+
+    it('testCacheFileRemoteLastModifiedFailure', function (done) {
+      c.addCachedFile('/testcached.jpg', function () {
+        c.testTree.open('/testcached.jpg', function (err, file) {
+          expect(err).toBeFalsy();
+          c.testShare.invalidateContentCache(c.testTree, '/');
+          var errorThrown = false;
+          c.registerInfoUrl('/', function (url, headers, cb) {
+            errorThrown = true;
+            cb('forced unit test error');
+          });
+          file.cacheFile(function (err) {
+            expect(err).toBeFalsy();
+            expect(errorThrown).toBeTruthy();
+            c.expectLocalFileExist('/testcached.jpg', true, false, done);
+          });
+        });
+      });
+    });
+
+    it('testCachedFileReDownloadFailure', function (done) {
+      c.addCachedFile('/testcached.jpg', function () {
+        c.remoteTree.open('/testcached.jpg', function (err, file) {
+          expect(err).toBeFalsy();
+          var newLastModified = new Date().getTime() + 100;
+          var oldLastModified = file.lastModified();
+          file.setLastModified(newLastModified);
+          file.close(function (err) {
+            expect(err).toBeFalsy();
+            c.testTree.open('/testcached.jpg', function (err, file) {
+              expect(err).toBeFalsy();
+              var errorThrown = false;
+              c.registerUrl('/testcached.jpg', function (url, headers, cb) {
+                errorThrown = true;
+                cb('forced unit test error');
+              });
+              file.cacheFile(function (err) {
+                expect(err).toBeFalsy();
+                expect(errorThrown).toBeTruthy();
+                c.expectLocalFileExist('/testcached.jpg', true, false, function () {
+                  c.testTree.open('/testcached.jpg', function (err, file) {
+                    expect(err).toBeFalsy();
+                    expect(file.lastModified()).toEqual(oldLastModified);
+                    done();
+                  });
+                });
+              });
+            });
+          });
+        });
+      });
+    });
+
+    it('testCachedFileDownloadFailure', function (done) {
+      c.addFile(c.remoteTree, '/testcache.jpg', function () {
+        c.testTree.open('/testcache.jpg', function (err, file) {
+          expect(err).toBeFalsy();
+          var errorThrown = false;
+          c.registerUrl('/testcache.jpg', function (url, headers, cb) {
+            errorThrown = true;
+            cb('forced unit test error');
+          });
+          file.cacheFile(function (err) {
+            expect(err).toBeTruthy();
+            c.expectLocalFileExist('/testcache.jpg', false, false, done);
+          });
+        });
+      });
+    });
+
+    it('testRenameRemoteFailure', function (done) {
+      c.addFile(c.remoteTree, '/renameme.jpg', function () {
+        c.testShare.invalidateContentCache(c.testTree, '/');
+        c.registerUrl('/renameme.jpg.json', function (url, headers, cb) {
+          cb('forced unit test error');
+        });
+        c.testTree.rename('/renameme.jpg', '/renamed.jpg', function (err) {
+          expect(err).toBeTruthy();
+          c.expectLocalFileExist('/renameme.jpg', false, false, function () {
+            c.expectLocalFileExist('/renamed.jpg', false, false, done);
+          });
+        });
+      });
+    });
+
+    it('testRenameLocalRemoteFailure', function (done) {
+      c.addCachedFile('/renameme.jpg', function () {
+        c.testShare.invalidateContentCache(c.testTree, '/');
+        var errorThrown = false;
+        c.registerUrl('/renamed.jpg.json', function (url, headers, cb) {
+          errorThrown = true;
+          cb('forced unit test error');
+        });
+        c.testTree.rename('/renameme.jpg', '/renamed.jpg', function (err) {
+          expect(err).toBeTruthy();
+          expect(errorThrown).toBeTruthy();
+          c.expectLocalFileExist('/renameme.jpg', true, false, function () {
+            c.expectLocalFileExist('/renamed.jpg', false, false, done);
+          });
+        });
+      });
+    });
+  });
 });

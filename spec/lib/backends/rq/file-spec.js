@@ -14,7 +14,7 @@ var RQCommon = require('./rq-common');
 var RQFile = RQCommon.require(__dirname, '../../../../lib/backends/rq/file');
 var RQFileConnection = RQCommon.require(__dirname, '../../../../lib/backends/rq/fileconnection');
 
-describe('RQFile', function () {
+ddescribe('RQFile', function () {
 
   var c;
 
@@ -167,29 +167,20 @@ describe('RQFile', function () {
 
     it('testCacheFileIsReadOnly', function (done) {
       c.addCachedFile('/testfile', function () {
-        c.remoteTree.open('/testfile', function (err, file) {
+        c.localTree.open('/testfile', function (err, file) {
           expect(err).toBeFalsy();
-          file.setReadOnly(true, function (err) {
+          expect(file.isReadOnly()).toBeFalsy();
+          c.testTree.open('/testfile', function (err, file) {
             expect(err).toBeFalsy();
-            file.close(function (err) {
+            expect(file.isReadOnly()).toBeFalsy();
+            file.cacheFile(function (err) {
               expect(err).toBeFalsy();
-              c.localTree.open('/testfile', function (err, file) {
+              file.close(function (err) {
                 expect(err).toBeFalsy();
-                expect(file.isReadOnly()).toBeFalsy();
-                c.testTree.open('/testfile', function (err, file) {
+                c.localTree.open('/testfile', function (err, file) {
                   expect(err).toBeFalsy();
                   expect(file.isReadOnly()).toBeFalsy();
-                  file.cacheFile(function (err) {
-                    expect(err).toBeFalsy();
-                    file.close(function (err) {
-                      expect(err).toBeFalsy();
-                      c.localTree.open('/testfile', function (err, file) {
-                        expect(err).toBeFalsy();
-                        expect(file.isReadOnly()).toBeFalsy();
-                        done();
-                      });
-                    });
-                  });
+                  done();
                 });
               });
             });
