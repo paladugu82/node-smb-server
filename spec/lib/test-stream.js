@@ -18,7 +18,6 @@ function TestStream(target) {
 
   this.path = target;
   this.written = '';
-  this.pipeDelay = 0;
 }
 
 util.inherits(TestStream, EventEmitter);
@@ -29,10 +28,6 @@ TestStream.PassThrough = function () {
     cb();
   });
   return stream;
-};
-
-TestStream.prototype.setPipeDelay = function (delay) {
-  this.pipeDelay = delay;
 };
 
 TestStream.prototype.setReadStream = function (readCb) {
@@ -61,9 +56,7 @@ TestStream.prototype.pipe = function (other) {
 
   function _emitEnd(data) {
     self.emit('end');
-    if (!other.aborted) {
-      other.end(data, 'utf8');
-    }
+    other.end(data, 'utf8');
   }
 
   if (this.readCb) {
@@ -72,13 +65,7 @@ TestStream.prototype.pipe = function (other) {
         self.emit('error', err);
       } else {
         self.emit('data', data);
-        if (self.pipeDelay) {
-          self.pipeDelay(function () {
-            _emitEnd(data);
-          });
-        } else {
-          _emitEnd(data);
-        }
+        _emitEnd(data);
       }
     });
   } else {

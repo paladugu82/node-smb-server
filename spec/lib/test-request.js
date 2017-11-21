@@ -12,6 +12,7 @@
 
 var util = require('util');
 var async = require('async');
+var URL = require('url');
 
 var TestStream = require('./test-stream');
 
@@ -22,7 +23,7 @@ var requestCb = function (url, method, headers, cb) {
   cb();
 }
 
-function TestRequest(options) {
+function TestRequest(options, reqCb) {
   TestStream.call(this, 'test-request');
 
   this.url = options.url;
@@ -31,6 +32,7 @@ function TestRequest(options) {
   this.aborted = false;
   this.statusCode = 501;
   this.resCb = false;
+  this.reqCb = reqCb;
 }
 
 util.inherits(TestRequest, TestStream);
@@ -62,6 +64,9 @@ TestRequest.prototype.end = function (data, encoding, cb) {
       if (cb) {
         cb(err);
       }
+      if (self.reqCb) {
+        self.reqCb(err);
+      }
     } else {
       if (!statusCode) {
         statusCode = self.statusCode;
@@ -74,35 +79,64 @@ TestRequest.prototype.end = function (data, encoding, cb) {
         res.end();
       }
 
+      res.emit('end');
+
       self.emit('response', res);
       if (cb) {
         cb(null, res);
       }
+      if (self.reqCb) {
+        self.reqCb(null, res, data);
+      }
     }
   }
 
-  TestStream.prototype.end(data, encoding, function (err) {
-    if (!err) {
-      if (self.method == 'POST') {
-        setData(self.url, self.headers, self.getWritten());
-        requestCb(self.url, self.method, self.headers, _doEnd);
-      } else if (self.method == 'PUT') {
-        setData(self.url, self.headers, self.getWritten());
-        requestCb(self.url, self.method, self.headers, _doEnd);
-      } else if (self.method == 'DELETE') {
-        dataz[self.url] = undefined;
-        requestCb(self.url, self.method, self.headers, _doEnd);
-      } else if (self.resCb) {
-        self.resCb(self.url, self.headers, function (err, statusCode, data) {
-          requestCb(self.url, self.method, self.headers, function () {
-            _doEnd(err, statusCode, data);
-          });
-        });
-      } else {
-        requestCb(self.url, self.method, self.headers, _doEnd);
-      }
+  function getTargetUrl(currUrl, targetUrl) {
+    var currParsed = URL.parse(currUrl);
+    var targetParsed = URL.parse(targetUrl);
+
+    if (!targetParsed.host) {
+      return currParsed.protocol + '//' + currParsed.host + targetUrl;
+    } else {
+      return targetUrl;
     }
-  });
+  }
+
+  if (!self.aborted) {
+    TestStream.prototype.end.call(self, data, encoding, function (err) {
+      if (!err) {
+        var data = '';
+        if (self.method == 'POST') {
+          data = self.getWritten();
+          setData(self.url, self.headers, data);
+        } else if (self.method == 'PUT') {
+          data = self.getWritten();
+          setData(self.url, self.headers, data);
+        } else if (self.method == 'DELETE') {
+          delete dataz[self.url];
+        } else if (self.method == 'MOVE') {
+          var targetUrl = getTargetUrl(self.url, self.headers['X-Destination']);
+          self.headers['X-Destination'] = targetUrl;
+          dataz[targetUrl] = dataz[self.url];
+          delete dataz[self.url];
+          if (urls[self.url]) {
+            urls[targetUrl] = urls[self.url];
+            delete urls[self.url];
+          }
+        }
+        var reqData = {data: data};
+        if (self.resCb) {
+          self.resCb(self.url, self.headers, function (err, statusCode, data) {
+            requestCb(self.url, self.method, self.headers, reqData, function () {
+              _doEnd(err, statusCode, data);
+            });
+          });
+        } else {
+          requestCb(self.url, self.method, self.headers, reqData, _doEnd);
+        }
+      }
+    });
+  }
 };
 
 TestRequest.prototype.abort = function () {
@@ -137,27 +171,33 @@ function request(options, cb) {
   var method = options.method ? options.method : 'GET';
   addRequestedUrl(options.url, method);
 
-  var req = new TestRequest(options);
+  var req;
+  if (method != 'GET' && method != 'HEAD' && method != 'DELETE' && method != 'MOVE') {
+    req = new TestRequest(options, cb);
+  } else {
+    req = new TestRequest(options);
+  }
   req.on('error', function (err) {
     // caught error event to avoid crash
   });
+
   if (urls[options.url]) {
     req.setResponseCallback(urls[options.url]);
-  } else if (dataz[options.url] && (method == 'DELETE' || method == 'PUT' || method == 'GET')) {
+  } else if (dataz[options.url] && (method != 'POST') && method != 'MOVE') {
     if (method == 'GET') {
       req.setResponseCallback(function (url, headers, resCb) {
-        resCb(null, 200, dataz[options.url]);
+        resCb(null, 200, dataz[options.url].data);
       });
     } else {
       req.setStatusCode(200);
     }
-  } else if (method == 'POST') {
+  } else if (method == 'POST' || method == 'MOVE') {
     req.setStatusCode(201);
   } else {
     req.setStatusCode(404);
   }
 
-  if (cb) {
+  if ((method == 'GET' || method == 'HEAD' || method == 'DELETE' || method == 'MOVE') && cb) {
     req.end(null, null, function (err, res) {
       if (err) {
         cb(err);
@@ -174,12 +214,22 @@ function registerUrl(url, callback) {
   urls[url] = callback;
 }
 
+function unregisterUrl(url) {
+  delete urls[url];
+}
+
+function setUrlData(url, data) {
+  dataz[url].data = data;
+}
+
 function setRequestCallback(callback) {
   requestCb = callback;
 }
 
 function registerUrlStatusCode(url, statusCode) {
-  //statusCodes[url] = statusCode;
+  this.registerUrl(url, function (url, headers, callback) {
+    callback(null, statusCode, '');
+  });
 }
 
 function getUrlMethodRequestCount(url, method) {
@@ -207,6 +257,8 @@ function printRequestedUrls() {
 module.exports.request = request;
 module.exports.clearAll = clearAll;
 module.exports.registerUrl = registerUrl;
+module.exports.unregisterUrl = unregisterUrl;
+module.exports.setUrlData = setUrlData;
 module.exports.setRequestCallback = setRequestCallback;
 module.exports.registerUrlStatusCode = registerUrlStatusCode;
 module.exports.wasUrlRequested = wasUrlRequested;

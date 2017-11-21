@@ -71,10 +71,6 @@ function TestCommon() {
 
   self.fs = globalfs;
   self.request = testRequest;
-
-  self.setPipeDelay = function (delayFunc) {
-    self.fs.setPipeDelay(delayFunc);
-  };
 }
 
 TestCommon.require = function (dirname, name) {

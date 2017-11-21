@@ -983,15 +983,12 @@ describe('RQTree', function () {
     });
 
     it('testRenameFolderFromTemp', function (done) {
-      c.addDirectory(c.remoteTree, '/.test', function () {
-        c.addDirectory(c.localTree, '/.test', function () {
-          c.testTree.rename('/.test', '/test', function (err) {
-            c.expectPathExist(c.remoteTree, '/.test', true, function () {
-              c.expectPathExist(c.remoteTree, '/test', false, function () {
-                c.expectPathExist(c.localTree, '/.test', false, function () {
-                  c.expectPathExist(c.localTree, '/test', true, done);
-                });
-              });
+      c.addDirectory(c.localTree, '/.test', function () {
+        c.request.printRegisteredUrls();
+        c.testTree.rename('/.test', '/test', function (err) {
+          c.expectPathExist(c.remoteTree, '/test', false, function () {
+            c.expectPathExist(c.localTree, '/.test', false, function () {
+              c.expectPathExist(c.localTree, '/test', true, done);
             });
           });
         });
@@ -1196,17 +1193,23 @@ describe('RQTree', function () {
       // in this test we're creating a situation where a file is in the process of being downloaded, and another
       // "thread" attempts to open the file. we're ensuring that if this happens then we don't end up with a file
       // whose length is incorrect
-      c.setPipeDelay(function (delayCb) {
-        // a second thread attempts to open the same file before the fetch is complete
-        c.testTree.open('/somefile', function (err, testFile) {
-          expect(err).toBeFalsy();
-          expect(testFile.size()).toEqual('/somefile'.length);
-          delayCb();
-        });
-      });
+      var secondCalled = false;
       c.addFileWithContent(c.remoteTree, '/somefile', '/somefile', function () {
+        c.registerUrl('/somefile', function (url, headers, callback) {
+          setTimeout(function () {
+            callback(null, 200, '/somefile');
+          }, 500);
+          // a second thread attempts to open the same file before the fetch is complete
+          c.testTree.open('/somefile', function (err, testFile) {
+            expect(err).toBeFalsy();
+            expect(testFile.size()).toEqual('/somefile'.length);
+            // nothing else to do here. done will be called by original thread
+            secondCalled = true;
+          });
+        });
         c.testTree.open('/somefile', function (err, file) {
           expect(err).toBeFalsy();
+          expect(file.size()).toEqual('/somefile'.length);
           // flush the file to force a cache of the file
           file.flush(function (err) {
             expect(err).toBeFalsy();
@@ -1218,6 +1221,7 @@ describe('RQTree', function () {
                   expect(err).toBeFalsy();
                   fetched.close(function (err) {
                     expect(err).toBeFalsy();
+                    expect(secondCalled).toBeTruthy();
                     done();
                   });
                 });
@@ -1230,23 +1234,39 @@ describe('RQTree', function () {
 
     it('testMultipleDownloadFile', function (done) {
       // this test verifies the case where multiple "threads" attempt to download the same file
-      c.setPipeDelay(function (delayCb) {
-        // a second thread attempts to download the same file before the first fetch is complete
-        c.testTree.open('/multiplefile', function (err, testFile) {
-          expect(err).toBeFalsy();
-          testFile.flush(function (err) {
+
+      var threadCount = 0;
+      function verifyDone() {
+        threadCount++;
+        // not sure which order the threads will complete. Both will call this method
+        if (threadCount == 2) {
+          c.testTree.open('/multiplefile', function (err, verifyFile) {
             expect(err).toBeFalsy();
-            c.testTree.open('/multiplefile', function (err, verifyFile) {
+            expect(verifyFile.size()).toEqual(100);
+            done();
+          });
+        }
+      }
+
+      var downloadDone = false;
+      c.addFileWithContent(c.remoteTree, '/multiplefile', '/multiplefile', function () {
+        c.registerUrl('/multiplefile', function (url, headers, callback) {
+          setTimeout(function () {
+            downloadDone = true;
+            callback(null, 200, '/multiplefile');
+          }, 500);
+          // a second thread attempts to download the same file before the first fetch is complete
+          c.testTree.open('/multiplefile', function (err, testFile) {
+            expect(err).toBeFalsy();
+            testFile.flush(function (err) {
               expect(err).toBeFalsy();
-              expect(verifyFile.size()).toEqual(100);
-              delayCb();
+              expect(downloadDone).toBeTruthy();
+              verifyDone();
             });
           });
         });
-      });
-
-      // first "thread" downloads the file
-      c.addFileWithContent(c.remoteTree, '/multiplefile', '/multiplefile', function () {
+        c.clearRemoteCache();
+        // first "thread" downloads the file
         c.testTree.open('/multiplefile', function (err, file) {
           expect(err).toBeFalsy();
           file.setLength(100, function (err) {
@@ -1255,7 +1275,7 @@ describe('RQTree', function () {
             file.close(function (err) {
               expect(err).toBeFalsy();
               c.expectLocalFileExist('/multiplefile', true, false, function () {
-                done();
+                verifyDone();
               });
             });
           });
@@ -1325,9 +1345,8 @@ describe('RQTree', function () {
           expect(err).toBeFalsy();
           var prevModified = file.lastModified();
           var newModified = file.lastModified() - 2000;
-          file.setLastModified(newModified);
-          file.close(function (err) {
-            expect(err).toBeFalsy();
+          c.setRemoteFileLastModified('/testfile', newModified, function () {
+            c.clearRemoteCache();
             c.testTree.open('/testfile', function (err, file) {
               expect(err).toBeFalsy();
               expect(file.lastModified()).toEqual(prevModified);

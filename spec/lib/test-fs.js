@@ -298,11 +298,7 @@ TestFS.prototype.close = function (fd, cb) {
 
 TestFS.prototype.clearAll = function () {
   this.allFiles = new Datastore();
-  this.pipeDelay = 0;
-};
-
-TestFS.prototype.setPipeDelay = function (delay) {
-  this.pipeDelay = delay;
+  this.paths = {};
 };
 
 TestFS.prototype.createReadStream = function (filePath, options) {
@@ -315,7 +311,6 @@ TestFS.prototype.createReadStream = function (filePath, options) {
     file = _findByIdSync.call(this, options.fd);
   }
   var stream = new TestStream(filePath);
-  stream.setPipeDelay(self.pipeDelay);
 
   stream.setReadStream(function (readCb) {
     var buff = new Array(file.size);
@@ -324,12 +319,26 @@ TestFS.prototype.createReadStream = function (filePath, options) {
         readCb(err);
       } else {
         var data = buff.join('');
-        readCb(null, data);
+        if (self.paths[filePath]) {
+          self.paths[filePath](filePath, data, function (err, finalData) {
+            if (err) {
+              readCb(err);
+            } else {
+              readCb(null, finalData);
+            }
+          });
+        } else {
+          readCb(null, data);
+        }
       }
     });
   });
 
   return stream;
+};
+
+TestFS.prototype.registerPath = function (filePath, callback) {
+  this.paths[filePath] = callback;
 };
 
 TestFS.prototype.createWriteStream = function (filePath) {
@@ -433,14 +442,27 @@ TestFS.prototype.fstat = function (fd, cb) {
 
 TestFS.prototype.truncate = function (path, length, cb) {
   var self = this;
-  var dir = utils.getParentPath(path);
-  var name = utils.getPathName(path);
 
-  _updateByName.call(self, path, {size: length, blksize: length}, false, function (err) {
+  // path can be either a file descriptor or a physical path. handle both.
+  _findByPath.call(self, path, function (err, pathItem) {
     if (err) {
       cb(err);
+    } else if (pathItem) {
+      _updateByName.call(self, path, {size: length, blksize: length}, false, function (err) {
+        if (err) {
+          cb(err);
+        } else {
+          cb();
+        }
+      });
     } else {
-      cb();
+      _updateById.call(self, path, {size: length, blksize: length}, false, function (err) {
+        if (err) {
+          cb(err);
+        } else {
+          cb();
+        }
+      });
     }
   });
 };
