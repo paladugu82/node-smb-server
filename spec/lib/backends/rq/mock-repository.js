@@ -144,9 +144,16 @@ MockRepository.prototype.delete = function (path, cb) {
 };
 
 MockRepository.prototype.move = function (path, targetPath, cb) {
-  this.db.update({path: path}, {$set: {path: targetPath}}, {}, function (err) {
+  var targetName = utils.getPathName(targetPath);
+  var self = this;
+  this.db.findOne({path: path}, function (err, doc) {
     expect(err).toBeFalsy();
-    cb();
+    expect(doc).toBeTruthy();
+    doc.entity.properties.name = targetName;
+    self.db.update({path: path}, {$set: {path: targetPath, entity: doc.entity}}, {}, function (err) {
+      expect(err).toBeFalsy();
+      cb();
+    });
   });
 };
 

@@ -1695,7 +1695,7 @@ describe('RQTree', function () {
     it('testExistsRemoteFailure', function (done) {
       c.addFile(c.remoteTree, '/testfile', function () {
         c.testShare.invalidateContentCache(c.testTree, '/');
-        c.registerUrl('/testfile.json', function (url, headers, cb) {
+        c.registerInfoUrl('/', function (url, headers, cb) {
           cb('forced unit test error');
         });
         c.testTree.exists('/testfile', function (err, exists) {
@@ -1829,7 +1829,7 @@ describe('RQTree', function () {
     it('testRenameRemoteFailure', function (done) {
       c.addFile(c.remoteTree, '/renameme.jpg', function () {
         c.testShare.invalidateContentCache(c.testTree, '/');
-        c.registerUrl('/renameme.jpg.json', function (url, headers, cb) {
+        c.registerInfoUrl('/', function (url, headers, cb) {
           cb('forced unit test error');
         });
         c.testTree.rename('/renameme.jpg', '/renamed.jpg', function (err) {
@@ -1845,7 +1845,7 @@ describe('RQTree', function () {
       c.addCachedFile('/renameme.jpg', function () {
         c.testShare.invalidateContentCache(c.testTree, '/');
         var errorThrown = false;
-        c.registerUrl('/renamed.jpg.json', function (url, headers, cb) {
+        c.registerInfoUrl('/', function (url, headers, cb) {
           errorThrown = true;
           cb('forced unit test error');
         });
