@@ -1691,6 +1691,31 @@ describe('RQTree', function () {
     });
   });
 
+  describe('ClearCache', function () {
+    it('testClearCache', function (done) {
+      c.addCachedFile('/cached.jpg', function () {
+        c.expectLocalFileExist('/cached.jpg', true, false, function () {
+          c.testTree.clearCache(function (err) {
+            expect(err).toBeFalsy();
+            c.expectLocalFileExist('/cached.jpg', false, false, done);
+          });
+        });
+      });
+    });
+
+    it('testClearCacheCacheInfoOnly', function (done) {
+      c.addCachedFile('/cached.jpg', function () {
+        c.testTree.local.cacheInfoOnly = true;
+        c.expectLocalFileExist('/cached.jpg', true, false, function () {
+          c.testTree.clearCache(function (err) {
+            expect(err).toBeFalsy();
+            c.expectLocalFileExist('/cached.jpg', false, false, done);
+          });
+        });
+      });
+    });
+  });
+
   describe('NetworkIssues', function () {
     it('testExistsRemoteFailure', function (done) {
       c.addFile(c.remoteTree, '/testfile', function () {
