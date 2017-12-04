@@ -383,11 +383,28 @@ RQCommon.prototype.addCachedFile = function (path, cb) {
 RQCommon.prototype.addDeletedFile = function (path, cb) {
   var c = this;
   c.addCachedFile(path, function () {
+    c.testTree.delete(path, function (err) {
+      expect(err).toBeFalsy();
+      c.expectQueuedMethod(utils.getParentPath(path), utils.getPathName(path), 'DELETE', function () {
+        c.expectLocalFileExist(path, false, false, cb);
+      });
+    });
+  });
+};
+
+RQCommon.prototype.addLocallyModifiedFile = function (path, cb) {
+  var c = this;
+  c.addCachedFile(path, function () {
     c.testTree.open(path, function (err, file) {
-      c.testTree.delete(path, function (err) {
+      expect(err).toBeFalsy();
+      expect(file).toBeTruthy();
+      file.setLength(10, function (err) {
         expect(err).toBeFalsy();
-        c.expectQueuedMethod(utils.getParentPath(path), utils.getPathName(path), 'DELETE', function () {
-          c.expectLocalFileExist(path, false, false, cb);
+        file.close(function (err) {
+          expect(err).toBeFalsy();
+          c.expectQueuedMethod(utils.getParentPath(path), utils.getPathName(path), 'POST', function () {
+            c.expectLocalFileExist(path, true, false, cb);
+          });
         });
       });
     });

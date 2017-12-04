@@ -323,6 +323,64 @@ describe('RQProcessor', function () {
         });
       });
     });
+
+    it('testSyncCreateAlreadyExists', function (done) {
+      c.addQueuedFile('/testduplicate.jpg', function () {
+        c.addFile(c.remoteTree, '/testduplicate.jpg', function () {
+          processor.sync(config, function (err) {
+            expect(err).toBeFalsy();
+            expect(c.getPathMethodRequestCount('/testduplicate.jpg', 'PUT')).toEqual(1);
+            c.expectLocalFileExist('/testduplicate.jpg', true, false, function () {
+              c.remoteTree.exists('/testduplicate.jpg', function (err, exists) {
+                expect(err).toBeFalsy();
+                expect(exists).toBeTruthy();
+                done();
+              });
+            });
+          });
+        });
+      });
+    });
+
+    it('testSyncUpdateNoExist', function (done) {
+      c.addLocallyModifiedFile('/testnoexist.jpg', function () {
+        c.remoteTree.delete('/testnoexist.jpg', function () {
+          processor.sync(config, function (err) {
+            expect(err).toBeFalsy();
+            expect(c.getPathMethodRequestCount('/testnoexist.jpg', 'POST')).toEqual(1);
+            c.expectLocalFileExist('/testnoexist.jpg', true, false, function () {
+              c.remoteTree.exists('/testnoexist.jpg', function (err, exists) {
+                expect(err).toBeFalsy();
+                expect(exists).toBeTruthy();
+                done();
+              });
+            });
+          });
+        });
+      });
+    });
+
+    it('testSyncDeleteNoExist', function (done) {
+      c.addCachedFile('/testnoexist.jpg', function () {
+        c.testTree.delete('/testnoexist.jpg', function (err) {
+          expect(err).toBeFalsy();
+          c.remoteTree.delete('/testnoexist.jpg', function (err) {
+            expect(err).toBeFalsy();
+            processor.sync(config, function (err) {
+              expect(err).toBeFalsy();
+              expect(c.getPathMethodRequestCount('/testnoexist.jpg', 'DELETE')).toEqual(0);
+              c.expectLocalFileExist('/testnoexist.jpg', false, false, function () {
+                c.remoteTree.exists('/testnoexist.jpg', function (err, exists) {
+                  expect(err).toBeFalsy();
+                  expect(exists).toBeFalsy();
+                  done();
+                });
+              });
+            });
+          });
+        });
+      });
+    });
   });
 
   describe('StartStop', function () {
