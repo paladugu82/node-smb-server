@@ -15,7 +15,7 @@
 var lock = require('../../lib/lock');
 var SMBContext = require('../../lib/smbcontext');
 
-ddescribe('Lock', function () {
+describe('Lock', function () {
   var context;
 
   beforeEach(function () {
