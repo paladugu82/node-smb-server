@@ -36,21 +36,22 @@ describe('RQProcessor', function () {
 
   describe('RQUpdated', function () {
     it('testItemUpdatedUploading', function (done) {
-      var delayed = false;
+      var canceled = false;
       c.addQueuedFile('/testfile', function () {
-        c.setPipeDelay(function (delayCb) {
-          if (!delayed) {
-            delayed = true;
+        c.registerLocalPath('/testfile', function (filePath, fileData, localCb) {
+          if (!canceled) {
+            canceled = true;
             c.testTree.rq.queueRequest(c.testContext, {
               method: 'POST',
               path: '/testfile',
               localPrefix: c.localPrefix,
               remotePrefix: c.hostPrefix
             }, function (err) {
-              delayCb();
+              expect(err).toBeFalsy();
+              localCb(null, fileData);
             });
           } else {
-            delayCb();
+            localCb(null, fileData);
           }
         });
         processor.sync(config, function (err) {
@@ -81,9 +82,10 @@ describe('RQProcessor', function () {
 
     var testPathUpdated = function (path, removePath, done) {
       c.addQueuedFile(path, function () {
-        c.setPipeDelay(function (pipeCb) {
+        c.registerLocalPath(path, function (filePath, fileData, fileCb) {
           c.testTree.rq.removePath(c.testContext, removePath, function (err) {
-            pipeCb();
+            expect(err).toBeFalsy();
+            fileCb(null, fileData);
           });
         });
         processor.sync(config, function (err) {
@@ -421,9 +423,9 @@ describe('RQProcessor', function () {
 
     it('testStartStopCancelRequest', function (done) {
       c.addQueuedFile('/testfile', function (file) {
-        c.setPipeDelay(function (delayCb) {
+        c.registerLocalPath('/testfile', function (filePath, fileData, fileCb) {
           processor.stop();
-          delayCb();
+          fileCb(null, fileData);
           expect(processor.emit).toHaveBeenCalledWith('syncabort', {path: '/testfile', file: '/local/path/testfile'});
           done();
         });

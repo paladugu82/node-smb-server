@@ -76,6 +76,27 @@ function _findById(id, cb) {
   });
 }
 
+function _findByIdSync(id) {
+  var self = this;
+  var sync = true;
+  var syncErr = null;
+  var data = null;
+  _findById.call(self, id, function (err, file) {
+    syncErr = err;
+    data = file;
+    sync = false;
+  });
+  while(sync) {require('deasync').sleep(100);}
+
+  if (syncErr) {
+    throw syncErr;
+  } else if (!data) {
+    throw id + ' not found';
+  }
+
+  return data;
+}
+
 function _extendDoc(doc) {
   var self = this;
   doc['isDirectory'] = function () {
@@ -277,19 +298,19 @@ TestFS.prototype.close = function (fd, cb) {
 
 TestFS.prototype.clearAll = function () {
   this.allFiles = new Datastore();
-  this.pipeDelay = 0;
+  this.paths = {};
 };
 
-TestFS.prototype.setPipeDelay = function (delay) {
-  this.pipeDelay = delay;
-};
-
-TestFS.prototype.createReadStream = function (filePath) {
+TestFS.prototype.createReadStream = function (filePath, options) {
   var self = this;
 
-  var file = _findByPathSync.call(this, filePath);
+  var file;
+  if (filePath) {
+    file = _findByPathSync.call(this, filePath);
+  } else {
+    file = _findByIdSync.call(this, options.fd);
+  }
   var stream = new TestStream(filePath);
-  stream.setPipeDelay(self.pipeDelay);
 
   stream.setReadStream(function (readCb) {
     var buff = new Array(file.size);
@@ -298,12 +319,26 @@ TestFS.prototype.createReadStream = function (filePath) {
         readCb(err);
       } else {
         var data = buff.join('');
-        readCb(null, data);
+        if (self.paths[filePath]) {
+          self.paths[filePath](filePath, data, function (err, finalData) {
+            if (err) {
+              readCb(err);
+            } else {
+              readCb(null, finalData);
+            }
+          });
+        } else {
+          readCb(null, data);
+        }
       }
     });
   });
 
   return stream;
+};
+
+TestFS.prototype.registerPath = function (filePath, callback) {
+  this.paths[filePath] = callback;
 };
 
 TestFS.prototype.createWriteStream = function (filePath) {
@@ -391,16 +426,43 @@ TestFS.prototype.stat = function (filePath, cb) {
   });
 };
 
-TestFS.prototype.truncate = function (path, length, cb) {
+TestFS.prototype.fstat = function (fd, cb) {
   var self = this;
-  var dir = utils.getParentPath(path);
-  var name = utils.getPathName(path);
-
-  _updateByName.call(self, path, {size: length, blksize: length}, false, function (err) {
+  _findById.call(self, fd, function (err, file) {
     if (err) {
       cb(err);
+    } else if (!file) {
+      cb({code: 'ENOENT', message: 'file to fstat not found ' + fd});
     } else {
-      cb();
+      _extendDoc.call(self, file);
+      cb(null, file);
+    }
+  });
+};
+
+TestFS.prototype.truncate = function (path, length, cb) {
+  var self = this;
+
+  // path can be either a file descriptor or a physical path. handle both.
+  _findByPath.call(self, path, function (err, pathItem) {
+    if (err) {
+      cb(err);
+    } else if (pathItem) {
+      _updateByName.call(self, path, {size: length, blksize: length}, false, function (err) {
+        if (err) {
+          cb(err);
+        } else {
+          cb();
+        }
+      });
+    } else {
+      _updateById.call(self, path, {size: length, blksize: length}, false, function (err) {
+        if (err) {
+          cb(err);
+        } else {
+          cb();
+        }
+      });
     }
   });
 };

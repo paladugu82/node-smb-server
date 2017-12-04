@@ -83,14 +83,16 @@ describe('RQFile', function () {
           expect(err).toBeFalsy();
           rqFile.cacheFile(function (err, localFile) {
             expect(err).toBeFalsy();
-            remoteFile.setLastModified(remoteFile.lastModified() + 100000);
-            remoteFile.close(function (err) {
-              c.testTree.open('/testfile', function (err, newRqFile) {
-                newRqFile.cacheFile(function (err, newLocalFile) {
-                  expect(err).toBeFalsy();
-                  expect(localFile.created()).toEqual(newLocalFile.created());
-                  expect(localFile.lastModified()).not.toEqual(newLocalFile.lastModified());
-                  done();
+            c.setRemoteFileLastModified('/testfile', remoteFile.lastModified() + 100000, function () {
+              remoteFile.close(function (err) {
+                c.clearRemoteCache();
+                c.testTree.open('/testfile', function (err, newRqFile) {
+                  newRqFile.cacheFile(function (err, newLocalFile) {
+                    expect(err).toBeFalsy();
+                    expect(localFile.created()).toEqual(newLocalFile.created());
+                    expect(localFile.lastModified()).not.toEqual(newLocalFile.lastModified());
+                    done();
+                  });
                 });
               });
             });
@@ -100,17 +102,16 @@ describe('RQFile', function () {
     });
 
     it('testCacheFileLocalFileRemoteChangedCantDelete', function (done) {
-      c.addFile(c.remoteTree, '/testfile', function (remoteFile) {
+      c.addFile(c.remoteTree, '/testfile', function () {
         c.testTree.open('/testfile', function (err, rqFile) {
           expect(err).toBeFalsy();
           rqFile.cacheFile(function (err, localFile) {
             expect(err).toBeFalsy();
-            remoteFile.setLastModified(remoteFile.lastModified() + 100000);
-            remoteFile.close(function (err) {
-              expect(err).toBeFalsy();
+            c.setRemoteFileLastModified('/testfile', localFile.lastModified() + 100000, function () {
               localFile.setLastModified(localFile.lastModified() + 10000);
               localFile.close(function (err) {
                 expect(err).toBeFalsy();
+                c.clearRemoteCache();
                 c.testTree.open('/testfile', function (err, newRqFile) {
                   newRqFile.cacheFile(function (err, newLocalFile) {
                     expect(err).toBeFalsy();
@@ -142,20 +143,21 @@ describe('RQFile', function () {
         c.testTree.open('/testfile', function (err, rqFile) {
           rqFile.cacheFile(function (err, localFile) {
             expect(err).toBeFalsy();
-            remoteFile.setLastModified(remoteFile.lastModified() + 100000);
-            localFile.setLastModified(localFile.lastModified() + 10000);
-            remoteFile.close(function (err) {
-              expect(err).toBeFalsy();
-              localFile.close(function (err) {
+            c.setRemoteFileLastModified('/testfile', remoteFile.lastModified() + 100000, function () {
+              localFile.setLastModified(localFile.lastModified() + 10000);
+              remoteFile.close(function (err) {
                 expect(err).toBeFalsy();
-                c.testTree.queueData('/testfile', 'POST', false, function (err) {
+                localFile.close(function (err) {
                   expect(err).toBeFalsy();
-                  rqFile.cacheFile(function (err, newLocalFile) {
+                  c.testTree.queueData('/testfile', 'POST', false, function (err) {
                     expect(err).toBeFalsy();
-                    expect(localFile.created()).toEqual(newLocalFile.created());
-                    expect(localFile.lastModified()).toEqual(newLocalFile.lastModified());
-                    expect(c.testShare.emit.calls.length).toEqual(2);
-                    done();
+                    rqFile.cacheFile(function (err, newLocalFile) {
+                      expect(err).toBeFalsy();
+                      expect(localFile.created()).toEqual(newLocalFile.created());
+                      expect(localFile.lastModified()).toEqual(newLocalFile.lastModified());
+                      expect(c.testShare.emit.calls.length).toEqual(2);
+                      done();
+                    });
                   });
                 });
               });
@@ -167,29 +169,20 @@ describe('RQFile', function () {
 
     it('testCacheFileIsReadOnly', function (done) {
       c.addCachedFile('/testfile', function () {
-        c.remoteTree.open('/testfile', function (err, file) {
+        c.localTree.open('/testfile', function (err, file) {
           expect(err).toBeFalsy();
-          file.setReadOnly(true, function (err) {
+          expect(file.isReadOnly()).toBeFalsy();
+          c.testTree.open('/testfile', function (err, file) {
             expect(err).toBeFalsy();
-            file.close(function (err) {
+            expect(file.isReadOnly()).toBeFalsy();
+            file.cacheFile(function (err) {
               expect(err).toBeFalsy();
-              c.localTree.open('/testfile', function (err, file) {
+              file.close(function (err) {
                 expect(err).toBeFalsy();
-                expect(file.isReadOnly()).toBeFalsy();
-                c.testTree.open('/testfile', function (err, file) {
+                c.localTree.open('/testfile', function (err, file) {
                   expect(err).toBeFalsy();
                   expect(file.isReadOnly()).toBeFalsy();
-                  file.cacheFile(function (err) {
-                    expect(err).toBeFalsy();
-                    file.close(function (err) {
-                      expect(err).toBeFalsy();
-                      c.localTree.open('/testfile', function (err, file) {
-                        expect(err).toBeFalsy();
-                        expect(file.isReadOnly()).toBeFalsy();
-                        done();
-                      });
-                    });
-                  });
+                  done();
                 });
               });
             });
@@ -294,6 +287,7 @@ describe('RQFile', function () {
                   localFile.read(buf2, 0, localFile.size(), 0, function (err) {
                     expect(err).toBeFalsy();
                     expect(buf2.join('')).toEqual('0testfile');
+                    c.clearRemoteCache();
                     c.remoteTree.open('/testfile', function (err, remoteFile) {
                       expect(err).toBeFalsy();
                       c.getFileContent(remoteFile, function (content) {
