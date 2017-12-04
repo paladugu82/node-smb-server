@@ -467,6 +467,10 @@ TestFS.prototype.truncate = function (path, length, cb) {
   });
 };
 
+TestFS.prototype.ftruncate = function (path, length, cb) {
+  this.truncate(path, length, cb);
+};
+
 TestFS.prototype.write = function (fd, data, offset, length, position, cb) {
   var self = this;
 

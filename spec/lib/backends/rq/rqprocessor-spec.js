@@ -349,7 +349,7 @@ describe('RQProcessor', function () {
         c.remoteTree.delete('/testnoexist.jpg', function () {
           processor.sync(config, function (err) {
             expect(err).toBeFalsy();
-            expect(c.getPathMethodRequestCount('/testnoexist.jpg', 'POST')).toEqual(1);
+            expect(c.getPathMethodRequestCount('/testnoexist.jpg', 'POST')).toEqual(2);
             c.expectLocalFileExist('/testnoexist.jpg', true, false, function () {
               c.remoteTree.exists('/testnoexist.jpg', function (err, exists) {
                 expect(err).toBeFalsy();
@@ -370,7 +370,7 @@ describe('RQProcessor', function () {
             expect(err).toBeFalsy();
             processor.sync(config, function (err) {
               expect(err).toBeFalsy();
-              expect(c.getPathMethodRequestCount('/testnoexist.jpg', 'DELETE')).toEqual(0);
+              expect(c.getPathMethodRequestCount('/testnoexist.jpg', 'DELETE')).toEqual(1);
               c.expectLocalFileExist('/testnoexist.jpg', false, false, function () {
                 c.remoteTree.exists('/testnoexist.jpg', function (err, exists) {
                   expect(err).toBeFalsy();
