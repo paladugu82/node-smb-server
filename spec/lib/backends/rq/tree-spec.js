@@ -1875,10 +1875,10 @@ describe('RQTree', function () {
           cb('forced unit test error');
         });
         c.testTree.rename('/renameme.jpg', '/renamed.jpg', function (err) {
-          expect(err).toBeTruthy();
+          expect(err).toBeFalsy();
           expect(errorThrown).toBeTruthy();
-          c.expectLocalFileExist('/renameme.jpg', true, false, function () {
-            c.expectLocalFileExist('/renamed.jpg', false, false, done);
+          c.expectLocalFileExist('/renameme.jpg', false, false, function () {
+            c.expectLocalFileExist('/renamed.jpg', true, true, done);
           });
         });
       });

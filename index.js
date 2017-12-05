@@ -12,7 +12,5 @@
 
 'use strict';
 
-var logger = require('./lib/logging');
-logger.init('./logging.json', function () {
-  require('./lib/server');
-});
+require('./lib/logging').initSync('./logging.json');
+require('./lib/server');
