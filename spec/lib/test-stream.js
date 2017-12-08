@@ -22,6 +22,9 @@ function TestStream(target) {
 
 util.inherits(TestStream, EventEmitter);
 
+TestStream.Writable = TestStream;
+TestStream.Stream = TestStream;
+
 TestStream.PassThrough = function () {
   var stream = new TestStream();
   stream.setReadStream(function (cb) {

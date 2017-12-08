@@ -292,8 +292,31 @@ TestFS.prototype.open = function (path, mode, cb) {
   });
 };
 
+TestFS.prototype.openSync = function (path, mode) {
+  var self = this;
+  var sync = true;
+  var syncErr = null;
+  var syncFid = null;
+  self.open(path, mode, function(err, fid) {
+    syncErr = err;
+    sync = false;
+    syncFid = fid;
+  });
+  while(sync) {require('deasync').sleep(100);}
+
+  if (syncErr) {
+    throw syncErr;
+  }
+
+  return syncFid;
+};
+
 TestFS.prototype.close = function (fd, cb) {
   cb();
+};
+
+TestFS.prototype.closeSync = function (fd) {
+
 };
 
 TestFS.prototype.clearAll = function () {

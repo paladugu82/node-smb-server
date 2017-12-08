@@ -12,18 +12,8 @@
 
 var common = require('../../test-common');
 var async = require('async');
-var RQTreeConnection = common.require(__dirname, '../../../../lib/backends/rq/treeconnection');
-var RQTree = common.require(__dirname, '../../../../lib/backends/rq/tree');
 var RQShare = common.require(__dirname, '../../../../lib/backends/rq/share');
-var RQLocalTree = common.require(__dirname, '../../../../lib/backends/rq/localtree');
-var TestTreeConnection = common.require(__dirname, '../test/treeconnection');
-var TestTree = common.require(__dirname, '../test/tree');
-var TestShare = common.require(__dirname, '../test/share');
-var FSTreeConnection = common.require(__dirname, '../../../../lib/backends/fs/treeconnection');
-var RQRemoteShare = common.require(__dirname, '../../../../lib/backends/rq/remoteshare');
 var RQRemoteTreeConnection = common.require(__dirname, '../../../../lib/backends/rq/remotetreeconnection');
-var FSTree = common.require(__dirname, '../../../../lib/backends/fs/tree');
-var FSShare = common.require(__dirname, '../../../../lib/backends/fs/share');
 var util = require('util');
 var utils = common.require(__dirname, '../../../../lib/utils');
 var consts = common.require(__dirname, '../../../../lib/backends/rq/common');
@@ -35,41 +25,41 @@ function RQCommon(config) {
   var self = this;
   common.call(this);
 
-  config = config || {};
-
-  var host = 'testlocalhost';
-  var port = 4502;
+  var host = RQCommon.getHost();
+  var port = RQCommon.getPort();
 
   self.mockRepo = new MockRepo();
   self.hostPrefix = 'http://' + host + ':' + port;
   self.urlPrefix = self.hostPrefix + '/api/assets';
 
-  self.remotePrefix = '/remote/path';
-  self.localPrefix = "/local/path";
+  self.remotePrefix = RQCommon.getRemotePrefix();
+  self.localPrefix = RQCommon.getLocalPrefix();
 
-  self.config = {
-    backend: 'rqtest',
-    modifiedThreshold: 100,
-    description: 'test remote share',
-    path: self.remotePrefix,
-    local: {
-      backend: 'localfs',
-      description: 'test local share',
-      path: self.localPrefix
-    },
-    work: {
-      backend: 'workfs',
-      path: '/work/path'
-    },
-    contentCacheTTL: 200,
-    preserveCacheFiles: [
-      consts.REQUEST_DB
-    ],
-    host: host,
-    port: port,
-    cacheInfoOnly: config.cacheInfoOnly ? true : false,
-    noprocessor: true
-  };
+  self.config = config;
+  if (!self.config) {
+    self.config = {
+      backend: 'rqtest',
+      modifiedThreshold: 100,
+      description: 'test remote share',
+      path: self.remotePrefix,
+      local: {
+        backend: 'localfs',
+        description: 'test local share',
+        path: self.localPrefix
+      },
+      work: {
+        backend: 'workfs',
+        path: '/work/path'
+      },
+      contentCacheTTL: 200,
+      preserveCacheFiles: [
+        consts.REQUEST_DB
+      ],
+      host: host,
+      port: port,
+      noprocessor: true
+    };
+  }
 
   var context = new SMBContext().withLabel('UnitTest');
   self.testContext = context;
@@ -174,6 +164,22 @@ function RQCommon(config) {
 util.inherits(RQCommon, common);
 
 RQCommon.require = common.require;
+
+RQCommon.getLocalPrefix = function () {
+  return '/local/path';
+};
+
+RQCommon.getRemotePrefix = function () {
+  return '/remote/path';
+};
+
+RQCommon.getHost = function () {
+  return 'testlocalhost';
+};
+
+RQCommon.getPort = function () {
+  return 19070;
+};
 
 RQCommon.isLocalTree = function (tree) {
   return tree.getSourceTree ? true : false;

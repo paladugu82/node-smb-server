@@ -1689,6 +1689,25 @@ describe('RQTree', function () {
         });
       });
     });
+
+
+    it('testRevertedRemoteVersionCacheInfoOnly', function (done) {
+      _addCachedCacheInfoOnlyFile('/reverttest.jpg', function () {
+        c.setRemoteFileLastModified('/reverttest.jpg', 1234, function () {
+          c.testTree.open('/reverttest.jpg', function (err, file) {
+            expect(err).toBeFalsy();
+            expect(file.lastModified()).not.toEqual(1234);
+            c.clearRemoteCache();
+            file.cacheFile(function (err, recached) {
+              expect(err).toBeFalsy();
+              expect(recached).toBeTruthy();
+              expect(recached.lastModified()).toEqual(1234);
+              c.expectLocalFileExist('/reverttest.jpg', true, false, done);
+            });
+          });
+        });
+      });
+    });
   });
 
   describe('ClearCache', function () {

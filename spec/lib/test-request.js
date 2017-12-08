@@ -146,10 +146,18 @@ TestRequest.prototype.abort = function () {
 function TestResponse(statusCode) {
   TestStream.call(this);
 
+  this.headers = {};
   this.statusCode = statusCode;
+  this.statusMessage = '';
 }
 
 util.inherits(TestResponse, TestStream);
+
+TestResponse.prototype.writeHead = function (statusCode, statusMessage, headers) {
+  this.statusCode = statusCode;
+  this.headers = headers || {};
+  this.statusMessage = statusMessage || '';
+};
 
 function addRequestedUrl(url, method) {
   if (!requestedUrls[url]) {
@@ -265,3 +273,5 @@ module.exports.wasUrlRequested = wasUrlRequested;
 module.exports.getUrlMethodRequestCount = getUrlMethodRequestCount;
 module.exports.printRegisteredUrls = printRegisteredUrls;
 module.exports.printRequestedUrls = printRequestedUrls;
+module.exports.TestRequest = TestRequest;
+module.exports.TestResponse = TestResponse;

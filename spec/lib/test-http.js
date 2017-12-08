@@ -29,4 +29,8 @@ Http.prototype.Server = function () {
   return new Server();
 };
 
+Http.prototype.createServer = function () {
+  return new Server();
+};
+
 module.exports = Http;

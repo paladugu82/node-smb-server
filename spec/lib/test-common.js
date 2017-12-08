@@ -71,23 +71,28 @@ function TestCommon() {
 
   self.fs = globalfs;
   self.request = testRequest;
+  self.mkdirp = globalMkdirp.mkdirp;
 }
 
 TestCommon.require = function (dirname, name) {
-  return proxyquire(Path.join(dirname, name), {
-    'request': testRequest.request,
-    'requestretry': testRequest.request,
-    'fs': globalfs,
-    'mkdirp': globalMkdirp.mkdirp,
-    'nedb': testDatastore,
-    'socket.io': globalSocketIO.create,
-    'http': globalHttp,
-    'express': globalExpress.create,
-    'body-parser': globalBodyParser,
-    'archiver': globalArchiver.archive,
-    'temp': globalTmp,
-    'stream': testStream
-  });
+  return TestCommon.requireStubs(dirname, name);
+};
+
+TestCommon.requireStubs = function (dirname, name, stubs) {
+  stubs = stubs || {};
+  stubs['request'] = testRequest.request;
+  stubs['requestretry'] = testRequest.request;
+  stubs['fs'] = globalfs;
+  stubs['mkdirp'] = globalMkdirp.mkdirp;
+  stubs['nedb'] = testDatastore;
+  stubs['socket.io'] = globalSocketIO.create;
+  stubs['http'] = globalHttp;
+  stubs['express'] = globalExpress.create;
+  stubs['body-parser'] = globalBodyParser;
+  stubs['archiver'] = globalArchiver.archive;
+  stubs['temp'] = globalTmp;
+  stubs['stream'] = testStream;
+  return proxyquire(Path.join(dirname, name), stubs);
 };
 
 TestCommon.runSync = function () {
