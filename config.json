@@ -103,7 +103,8 @@
         "downloadprogress",
         "downloadstart",
         "downloadend",
-        "downloaderr"
+        "downloaderr",
+        "networkloss"
       ],
       "preserveCacheFiles": [
         "request-queue.nedb"
