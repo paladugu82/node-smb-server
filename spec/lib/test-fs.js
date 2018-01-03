@@ -360,6 +360,18 @@ TestFS.prototype.createReadStream = function (filePath, options) {
   return stream;
 };
 
+TestFS.prototype.realPath = function (path, options, cb) {
+  if (!cb) {
+    cb = options;
+  }
+
+  cb(null, path);
+};
+
+TestFS.prototype.realPathSync = function (path) {
+  return path;
+};
+
 TestFS.prototype.registerPath = function (filePath, callback) {
   this.paths[filePath] = callback;
 };

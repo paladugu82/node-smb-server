@@ -35,7 +35,7 @@ globalfs['@global'] = true;
 testRequest.request['@global'] = true;
 testDatastore['@global'] = true;
 globalMkdirp.mkdirp['@global'] = true;
-testHttp['@global'] = true;
+globalHttp['@global'] = true;
 globalSocketIO.create['@global'] = true;
 globalExpress.create['@global'] = true;
 globalExpress.create['static'] = globalExpress.static;
@@ -57,11 +57,7 @@ Path.join = function () {
   return res.replace(/\\/g, Path.sep);
 };
 
-spyOn(globalfs, 'createReadStream').andCallThrough();
-spyOn(globalfs, 'createWriteStream').andCallThrough();
-spyOn(globalfs, 'writeFileSync').andCallThrough();
-spyOn(globalfs, 'unlinkSync').andCallThrough();
-spyOn(globalfs, 'statSync').andCallThrough();
+var firstLoad = true;
 
 function TestCommon() {
   var self = this;
@@ -72,6 +68,15 @@ function TestCommon() {
   self.fs = globalfs;
   self.request = testRequest;
   self.mkdirp = globalMkdirp.mkdirp;
+
+  if (firstLoad) {
+    firstLoad = false;
+    spyOn(globalfs, 'createReadStream').andCallThrough();
+    spyOn(globalfs, 'createWriteStream').andCallThrough();
+    spyOn(globalfs, 'writeFileSync').andCallThrough();
+    spyOn(globalfs, 'unlinkSync').andCallThrough();
+    spyOn(globalfs, 'statSync').andCallThrough();
+  }
 }
 
 TestCommon.require = function (dirname, name) {
