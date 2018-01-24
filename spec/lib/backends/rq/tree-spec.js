@@ -1283,6 +1283,121 @@ describe('RQTree', function () {
       });
     });
 
+    it('testReadMultiple', function (done) {
+      var fileName = '/multipleread.jpg';
+      var now = new Date().getTime();
+      var tree2 = c.testTreeConnection.createTree(c.createContext('ReadMultipleTree'));
+      c.addRemoteFileWithDates(fileName, 'multiple read content', now, now, function () {
+        c.registerUrl(fileName, function (url, headers, cb) {
+          setTimeout(function () {
+            cb(null, 200);
+          }, 500);
+        });
+        c.testTree.open(fileName, function (err, file1) {
+          expect(err).toBeFalsy();
+          tree2.open(fileName, function (err, file2) {
+            expect(err).toBeFalsy();
+
+            var buffer1 = new Array(file1.size());
+            var buffer2 = new Array(file2.size());
+            file1.read(buffer1, 0, 10000, 0, function (err, actual) {
+              expect(err).toBeFalsy();
+              expect(actual).toEqual(file1.size());
+            });
+            file2.read(buffer2, 0, 10000, 0, function (err, actual) {
+              expect(err).toBeFalsy();
+              expect(actual).toEqual(file2.size());
+              expect(c.getPathMethodRequestCount(fileName, 'GET')).toEqual(1);
+              done();
+            });
+          });
+        });
+      });
+    });
+
+    it('testRecacheMultiple', function (done) {
+      var fileName = '/multiplecache.jpg';
+      var now = new Date().getTime();
+      var tree2 = c.testTreeConnection.createTree(c.createContext('RecacheMultipleTree'));
+      c.addRemoteFileWithDates(fileName, 'recache multiple times', now, now, function () {
+        c.registerUrl(fileName, function (url, headers, cb) {
+          setTimeout(function () {
+            cb(null, 200);
+          }, 500);
+        });
+        c.localTree.download(c.remoteTree, fileName, function (err) {
+          expect(err).toBeFalsy();
+          c.setRemoteFileLastModified(fileName, now + 100, function () {
+            c.clearRemoteCache();
+            c.testTree.open(fileName, function (err, file1) {
+              expect(err).toBeFalsy();
+              tree2.open(fileName, function (err, file2) {
+                expect(err).toBeFalsy();
+
+                var buffer1 = new Array(file1.size());
+                var buffer2 = new Array(file2.size());
+                file1.read(buffer1, 0, 10000, 0, function (err, actual) {
+                  expect(err).toBeFalsy();
+                  expect(actual).toEqual(file1.size());
+                });
+                file2.read(buffer2, 0, 10000, 0, function (err, actual) {
+                  expect(err).toBeFalsy();
+                  expect(actual).toEqual(file2.size());
+                  expect(c.getPathMethodRequestCount(fileName, 'GET')).toEqual(2);
+                  done();
+                });
+              });
+            });
+          });
+        });
+      });
+    });
+
+    it('testReadMultipleError', function (done) {
+      var first = true;
+      var fileName = '/readmultipleerr.jpg';
+      var now = new Date().getTime();
+      var tree2 = c.testTreeConnection.createTree(c.createContext('ReadMultipleError1'));
+      var tree3 = c.testTreeConnection.createTree(c.createContext('ReadMultipleError2'));
+      c.addRemoteFileWithDates(fileName, 'error', now, now, function () {
+        c.registerUrl(fileName, function (url, headers, cb) {
+          setTimeout(function () {
+            if (first) {
+              first = false;
+              cb('read error!');
+            } else {
+              cb(null, 200);
+            }
+          }, 500);
+        });
+        c.testTree.open(fileName, function (err, file1) {
+          expect(err).toBeFalsy();
+          tree2.open(fileName, function (err, file2) {
+            expect(err).toBeFalsy();
+            tree3.open(fileName, function (err, file3) {
+              expect(err).toBeFalsy();
+              var buffer1 = new Array(file1.size());
+              var buffer2 = new Array(file2.size());
+              var buffer3 = new Array(file3.size());
+              file1.read(buffer1, 0, 1000, 0, function (err, actual) {
+                expect(err).toBeTruthy();
+              });
+              file2.read(buffer2, 0, 1000, 0, function (err, actual) {
+                expect(err).toBeFalsy();
+                expect(actual).toEqual(file2.size());
+              });
+              file3.read(buffer3, 0, 1000, 0, function (err, actual) {
+                expect(err).toBeFalsy();
+                expect(actual).toEqual(file3.size());
+                expect(c.getPathMethodRequestCount(fileName, 'GET')).toEqual(2);
+                expect(first).toBeFalsy();
+                done();
+              });
+            });
+          });
+        });
+      });
+    });
 
     it('testWorkConflict', function (done) {
       // simulate a file that is being downloaded whose information is requested mid-download
@@ -1899,6 +2014,22 @@ describe('RQTree', function () {
           c.expectLocalFileExist('/renameme.jpg', false, false, function () {
             c.expectLocalFileExist('/renamed.jpg', true, true, done);
           });
+        });
+      });
+    });
+
+    it('testInfoParseError', function (done) {
+      var now = new Date().getTime();
+      var errorThrown = false;
+      c.addRemoteFileWithDates('/parseerror.jpg', 'parsed content', now, now, function () {
+        c.registerInfoUrl('/', function (url, headers, cb) {
+          errorThrown = true;
+          cb(null, 200, 'NOT JSON CONTENT');
+        });
+        c.testTree.open('/parseerror.jpg', function (err, file) {
+          expect(err).toBeTruthy();
+          expect(errorThrown).toBeTruthy();
+          done();
         });
       });
     });

@@ -61,7 +61,7 @@ function RQCommon(config) {
     };
   }
 
-  var context = new SMBContext().withLabel('UnitTest');
+  var context = self.createContext('UnitTest');
   self.testContext = context;
 
   self.testShare = new RQShare('rq', self.config);
@@ -199,6 +199,10 @@ RQCommon.isLocalTree = function (tree) {
 
 RQCommon.isRQFile = function (file) {
   return file.cacheFile ? true : false;
+};
+
+RQCommon.prototype.createContext = function (label) {
+  return new SMBContext().withLabel(label);
 };
 
 RQCommon.prototype.clearRemoteCache = function () {

@@ -53,33 +53,6 @@ describe('LocalTreeTests', function () {
       expect(c.localTree.isDownloading('/testfile')).toBeTruthy();
     });
 
-    it('testWaitDownload', function (done) {
-      var waited = false;
-      c.localTree.setDownloading('/testfile', true);
-      c.localTree.waitOnDownload('/testfile', function (err) {
-        expect(err).toBeFalsy();
-        expect(waited).toBeTruthy();
-
-        // it shouldn't wait a second time
-        c.localTree.waitOnDownload('/testfile', function (err) {
-          expect(err).toBeFalsy();
-          done();
-        });
-      });
-
-      setTimeout(function () {
-        waited = true;
-        c.localTree.setDownloading('/testfile', false);
-      }, 500);
-    });
-
-    it('testWaitDownloadNotDownloading', function (done) {
-      c.localTree.waitOnDownload('/testfile', function (err) {
-        expect(err).toBeFalsy();
-        done();
-      });
-    });
-
     it('testDownload', function (done) {
       c.addFile(c.remoteTree, '/test', function () {
         c.expectLocalFileExist('/test', false, false, function () {
@@ -87,6 +60,32 @@ describe('LocalTreeTests', function () {
             expect(err).toBeFalsy();
             expect(file).toBeTruthy();
             c.expectLocalFileExistExt('/test', true, true, false, done);
+          });
+        });
+      });
+    });
+
+    it('testListIsDownloading', function (done) {
+      var fileName = '/downloading.jpg';
+      var called = false;
+      c.addFile(c.remoteTree, '/downloading.jpg', function () {
+        c.registerUrl(fileName, function (url, headers, cb) {
+          c.localTree.list('/', function (err, files) {
+            called = true;
+            expect(err).toBeFalsy();
+            expect(files.length).toEqual(0);
+            cb(null, 200);
+          });
+        });
+        c.testTree.open(fileName, function (err, file) {
+          expect(err).toBeFalsy();
+
+          var buffer = new Array(file.size());
+          file.read(buffer, 0, 10000, 0, function (err, actual) {
+            expect(err).toBeFalsy();
+            expect(actual).toEqual(file.size());
+            expect(called).toBeTruthy();
+            done();
           });
         });
       });
