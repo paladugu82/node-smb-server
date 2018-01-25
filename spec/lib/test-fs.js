@@ -640,6 +640,25 @@ TestFS.prototype.readdir = function (folderPath, callback) {
   });
 };
 
+TestFS.prototype.readdirSync = function (folderPath) {
+  var self = this;
+  var sync = true;
+  var data = null;
+  var syncErr = null;
+  self.readdir(folderPath, function(err, names) {
+    data = names;
+    syncErr = err;
+    sync = false;
+  });
+  while(sync) {require('deasync').sleep(100);}
+
+  if (syncErr) {
+    throw syncErr;
+  }
+
+  return data;
+};
+
 TestFS.prototype.rmdir = function (path ,cb) {
   var self = this;
   var dir = utils.getParentPath(path);

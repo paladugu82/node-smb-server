@@ -10,6 +10,9 @@
  *  governing permissions and limitations under the License.
  */
 
+var EventEmitter = require('events').EventEmitter;
+var util = require('util');
+
 var testfs = require('./test-fs');
 var testDatastore = require('./test-nedb');
 var testMkdirp = require('./test-mkdirp');
@@ -60,6 +63,7 @@ Path.join = function () {
 var firstLoad = true;
 
 function TestCommon() {
+  EventEmitter.call(this);
   var self = this;
 
   globalfs.clearAll();
@@ -78,6 +82,8 @@ function TestCommon() {
     spyOn(globalfs, 'statSync').andCallThrough();
   }
 }
+
+util.inherits(TestCommon, EventEmitter);
 
 TestCommon.require = function (dirname, name) {
   return TestCommon.requireStubs(dirname, name);
