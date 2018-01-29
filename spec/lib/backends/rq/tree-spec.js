@@ -784,6 +784,16 @@ describe('RQTree', function () {
     });
   });
 
+  iit('testCreateDirectoryError', function (done) {
+    c.registerUrl('/test', function (url, headers, cb) {
+      cb(null, 404);
+    });
+    c.testTree.createDirectory('/test', function (err) {
+      expect(err).toBeTruthy();
+      done();
+    });
+  });
+
   it('testCreateDirectoryTemp', function (done) {
     c.testTree.createDirectory('/.test', function (err, dir) {
       expect(err).toBeFalsy();
