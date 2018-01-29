@@ -784,7 +784,7 @@ describe('RQTree', function () {
     });
   });
 
-  iit('testCreateDirectoryError', function (done) {
+  it('testCreateDirectoryError', function (done) {
     c.registerUrl('/test', function (url, headers, cb) {
       cb(null, 404);
     });
