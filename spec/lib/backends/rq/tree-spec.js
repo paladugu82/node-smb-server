@@ -654,6 +654,24 @@ describe('RQTree', function () {
     });
   });
 
+  describe('CacheSize', function () {
+    it('testGetCacheSize', function (done) {
+      var cacheName = '/newcached.jpg';
+      c.addFile(c.remoteTree, '/notcached.jpg', function () {
+        c.addQueuedFile(cacheName, function () {
+          c.testTree.checkCacheSize(1);
+          c.testShare.on('shareEvent', function (data) {
+            if (data.event == 'cachesize') {
+              expect(data.data.maxCacheSize).toEqual(1);
+              expect(data.data.cacheSize).toEqual(cacheName.length);
+              done();
+            }
+          });
+        });
+      });
+    });
+  });
+
   describe('QueueData', function () {
     it('testQueueData', function (done) {
       c.testTree.queueData('/testfile', 'PUT', false, function (err) {
