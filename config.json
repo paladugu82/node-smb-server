@@ -4,7 +4,6 @@
     "host" : "0.0.0.0"
   },
   "domainName" : "",
-  "allowAnonymous" : false,
   "smb2Support": false,
   "extendedSecurity": true,
   "users" : {
