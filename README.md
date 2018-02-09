@@ -119,7 +119,7 @@ for each. See [Share Configurations][SHARECONFIGS] for more information. Default
 ### Share Configurations
 Each share supports the following options by default:
 
-* _name_: A unique value used to identify the share. In addition, the name is 
+* _backend_: A unique value used to identify the share. In addition, the name is 
 used when determining which sub-directory of 
 [the backends folder][BACKENDS] that the server will use to load the share's 
 module. It will also determine the path to use when connecting to the share. 
