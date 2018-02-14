@@ -662,7 +662,6 @@ describe('RQTree', function () {
           c.testTree.checkCacheSize(1);
           c.testShare.on('shareEvent', function (data) {
             if (data.event == 'cachesize') {
-              expect(data.data.maxCacheSize).toEqual(1);
               expect(data.data.cacheSize).toEqual(cacheName.length);
               done();
             }
