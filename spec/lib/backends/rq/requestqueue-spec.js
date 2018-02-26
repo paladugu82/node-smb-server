@@ -157,6 +157,54 @@ describe('RequestQueue', function () {
     expect(verified).toEqual(expected);
   };
 
+  function expectRequestChangedEmitted(toVerify) {
+    var expectedTotal = toVerify.length;
+    var total = 0;
+    if (rq.emit.calls) {
+      for (var i = 0; i < rq.emit.calls.length; i++) {
+        if (rq.emit.calls[i].args) {
+          if (rq.emit.calls[i].args[0] == 'requestchanged') {
+            total++;
+            var data = rq.emit.calls[i].args[1];
+            for (var j = 0; j < toVerify.length; j++) {
+              var path = toVerify[j].path;
+              var name = toVerify[j].name;
+              var method = toVerify[j].method;
+              var isRemoved = toVerify[j].isRemoved;
+              if (data.path == Path.join(path, name)) {
+                if (!isRemoved || data.removed) {
+                  if (!method || (data.method == method && data.timestamp)) {
+                    toVerify.splice(j, 1);
+                    break;
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+    expect(toVerify.length).toEqual(0);
+    expect(total).toEqual(expectedTotal);
+  }
+
+  function getRequestChangeObject(path, name, method, isRemoved) {
+    return {path: path, name: name, method: method, isRemoved: isRemoved};
+  }
+
+  function printRequestChanged() {
+    if (rq.emit.calls) {
+      for (var i = 0; i < rq.emit.calls.length; i++) {
+        var call = rq.emit.calls[i];
+        if (call.args) {
+          if (call.args[0] == 'requestchanged') {
+            console.log(call.args[1]);
+          }
+        }
+      }
+    }
+  }
+
   beforeEach(function () {
     common = new testcommon();
 
@@ -300,6 +348,7 @@ describe('RequestQueue', function () {
         expect(err).toBeFalsy();
         expectEventEmitted('itemupdated', Path.join(testPath, testName));
         expectQueueChangedEmitted();
+        expectRequestChangedEmitted([getRequestChangeObject(testPath, testName, null, true)]);
         done();
       });
     });
@@ -309,6 +358,7 @@ describe('RequestQueue', function () {
         expect(err).toBeTruthy();
         expectEventEmitted('itemupdated', Path.join(testPath, testName), true);
         expectQueueChangedEmitted(true);
+        expectRequestChangedEmitted([]);
         done();
       });
     });
@@ -356,6 +406,12 @@ describe('RequestQueue', function () {
           expect(lookup[testDestName]).toEqual('DELETE');
           expectEventEmitted('pathupdated', testPath);
           expectQueueChangedEmitted();
+          expectRequestChangedEmitted([
+            getRequestChangeObject(testPath, testName, null, true),
+            getRequestChangeObject(testPath, testDestName, null, true),
+            getRequestChangeObject(testDestPath, testName, 'PUT'),
+            getRequestChangeObject(testDestPath, testDestName, 'DELETE')
+          ]);
           done();
         });
       });
@@ -370,6 +426,10 @@ describe('RequestQueue', function () {
           expect(lookup[testName]).toEqual('DELETE');
           expectEventEmitted('pathupdated', testPath);
           expectQueueChangedEmitted();
+          expectRequestChangedEmitted([
+            getRequestChangeObject(testPath + '/sub', testName, null, true),
+            getRequestChangeObject(testDestPath + '/sub', testName, 'DELETE')
+          ]);
           done();
         });
       });
@@ -379,7 +439,7 @@ describe('RequestQueue', function () {
   describe('RemovePath', function () {
     it('testRemovePath', function (done) {
       addRequest('PUT');
-      addRequest('DELETE', testPath, testDestName, testLocalPrefix, testRemotePrefix);
+      addRequestOptions('DELETE', testPath, testDestName, testLocalPrefix, testRemotePrefix);
       rq.removePath(common.testContext, testPath, function (err) {
         expect(err).toBeFalsy();
         rq.getRequests(common.testContext, testPath, function (err, lookup) {
@@ -388,6 +448,10 @@ describe('RequestQueue', function () {
           expect(lookup[testDestName]).toBeFalsy();
           expectEventEmitted('pathupdated', testPath);
           expectQueueChangedEmitted();
+          expectRequestChangedEmitted([
+            getRequestChangeObject(testPath, testName, null, true),
+            getRequestChangeObject(testPath, testDestName, null, true)
+          ]);
           done();
         });
       });
@@ -402,6 +466,9 @@ describe('RequestQueue', function () {
           expect(lookup[testName]).toBeFalsy();
           expectEventEmitted('pathupdated', testPath);
           expectQueueChangedEmitted();
+          expectRequestChangedEmitted([
+            getRequestChangeObject(testPath + '/sub', testName, null, true)
+          ]);
           done();
         });
       });
@@ -416,6 +483,9 @@ describe('RequestQueue', function () {
           expect(lookup[testName]).toBeFalsy();
           expectEventEmitted('pathupdated', '/');
           expectQueueChangedEmitted();
+          expectRequestChangedEmitted([
+            getRequestChangeObject(testPath, testName, null, true)
+          ]);
           done();
         });
       });
@@ -437,6 +507,10 @@ describe('RequestQueue', function () {
             expect(lookup[testDestName]).toEqual('DELETE');
             expectEventEmitted('pathupdated', testPath, true);
             expectQueueChangedEmitted();
+            expectRequestChangedEmitted([
+              getRequestChangeObject(testDestPath, testName, 'PUT'),
+              getRequestChangeObject(testDestPath, testDestName, 'DELETE')
+            ]);
             done();
           });
         });
@@ -455,6 +529,9 @@ describe('RequestQueue', function () {
             expect(lookup[testName]).toEqual('PUT');
             expectEventEmitted('pathupdated', testPath, true);
             expectQueueChangedEmitted();
+            expectRequestChangedEmitted([
+              getRequestChangeObject(testDestPath + '/sub', testName, 'PUT')
+            ]);
             done();
           });
         });
@@ -474,6 +551,9 @@ describe('RequestQueue', function () {
         expect(results[0].remotePrefix).toEqual(testRemotePrefix);
         expectEventEmitted('itemupdated', testFullPath, true);
         expectQueueChangedEmitted();
+        expectRequestChangedEmitted([
+          getRequestChangeObject(testPath, testName, 'DELETE')
+        ]);
         done();
       });
     });
@@ -484,6 +564,9 @@ describe('RequestQueue', function () {
         expect(results.length).toEqual(0);
         expectEventEmitted('itemupdated', testFullPath);
         expectQueueChangedEmitted();
+        expectRequestChangedEmitted([
+          getRequestChangeObject(testPath, testName, null, false)
+        ]);
         done();
       });
     });
@@ -492,6 +575,10 @@ describe('RequestQueue', function () {
       queueAndVerifyReplace('POST', 'DELETE', function (results) {
         expectEventEmitted('itemupdated', testFullPath);
         expectQueueChangedEmitted();
+        expectRequestChangedEmitted([
+          getRequestChangeObject(testPath, testName, 'POST'),
+          getRequestChangeObject(testPath, testName, 'DELETE')
+        ]);
         done();
       });
     });
@@ -509,6 +596,11 @@ describe('RequestQueue', function () {
         expectEventEmitted('itemupdated', testFullPath, true);
         expectEventEmitted('itemupdated', testFullDestPath, true);
         expectQueueChangedEmitted();
+        expectRequestChangedEmitted([
+          getRequestChangeObject(testPath, testName, 'DELETE'),
+          getRequestChangeObject(testPath, testName, 'DELETE'),
+          getRequestChangeObject(testDestPath, testDestName, 'PUT')
+        ]);
         done();
       });
     });
@@ -531,6 +623,10 @@ describe('RequestQueue', function () {
         expectEventEmitted('itemupdated', testFullPath, true);
         expectEventEmitted('itemupdated', testFullDestPath, true);
         expectQueueChangedEmitted();
+        expectRequestChangedEmitted([
+          getRequestChangeObject(testPath, testName, 'DELETE'),
+          getRequestChangeObject(testDestPath, testDestName, 'PUT')
+        ]);
         done();
       });
     });
@@ -539,6 +635,10 @@ describe('RequestQueue', function () {
       queueAndVerifyReplace('DELETE', 'DELETE', function (results) {
         expectEventEmitted('itemupdated', testFullPath, true);
         expectQueueChangedEmitted();
+        expectRequestChangedEmitted([
+          getRequestChangeObject(testPath, testName, 'DELETE'),
+          getRequestChangeObject(testPath, testName, 'DELETE')
+        ]);
         done();
       });
     });
@@ -547,6 +647,9 @@ describe('RequestQueue', function () {
       queueAndVerify('PUT', function (results) {
         expectEventEmitted('itemupdated', testFullPath, true);
         expectQueueChangedEmitted();
+        expectRequestChangedEmitted([
+          getRequestChangeObject(testPath, testName, 'PUT')
+        ]);
         done();
       });
     });
@@ -555,6 +658,10 @@ describe('RequestQueue', function () {
       queueAndVerifyReplace('PUT', 'PUT', function (results) {
         expectEventEmitted('itemupdated', testFullPath);
         expectQueueChangedEmitted();
+        expectRequestChangedEmitted([
+          getRequestChangeObject(testPath, testName, 'PUT'),
+          getRequestChangeObject(testPath, testName, 'PUT')
+        ]);
         done();
       });
     });
@@ -563,6 +670,10 @@ describe('RequestQueue', function () {
       queueAndVerifyNoReplace('POST', 'PUT', function (results) {
         expectEventEmitted('itemupdated', testFullPath);
         expectQueueChangedEmitted();
+        expectRequestChangedEmitted([
+          getRequestChangeObject(testPath, testName, 'POST'),
+          getRequestChangeObject(testPath, testName, 'POST')
+        ]);
         done();
       });
     });
@@ -582,6 +693,11 @@ describe('RequestQueue', function () {
         expectEventEmitted('itemupdated', testFullPath, true);
         expectEventEmitted('itemupdated', testFullDestPath, true);
         expectQueueChangedEmitted();
+        expectRequestChangedEmitted([
+          getRequestChangeObject(testPath, testName, 'DELETE'),
+          getRequestChangeObject(testPath, testName, 'POST'),
+          getRequestChangeObject(testDestPath, testDestName, 'PUT')
+        ]);
         expect(verified).toEqual(true);
         done();
       });
@@ -603,6 +719,10 @@ describe('RequestQueue', function () {
         expectEventEmitted('itemupdated', testFullPath, true);
         expectEventEmitted('itemupdated', testFullDestPath, true);
         expectQueueChangedEmitted();
+        expectRequestChangedEmitted([
+          getRequestChangeObject(testDestPath, testDestName, 'PUT'),
+          getRequestChangeObject(testPath, testName, 'PUT')
+        ]);
         done();
       });
     });
@@ -611,6 +731,10 @@ describe('RequestQueue', function () {
       queueAndVerifyReplace('DELETE', 'POST', function (results) {
         expectEventEmitted('itemupdated', testFullPath, true);
         expectQueueChangedEmitted();
+        expectRequestChangedEmitted([
+          getRequestChangeObject(testPath, testName, 'DELETE'),
+          getRequestChangeObject(testPath, testName, 'POST')
+        ]);
         done();
       });
     });
@@ -619,6 +743,9 @@ describe('RequestQueue', function () {
       queueAndVerify('POST', function (results) {
         expectEventEmitted('itemupdated', testFullPath, true);
         expectQueueChangedEmitted();
+        expectRequestChangedEmitted([
+          getRequestChangeObject(testPath, testName, 'POST')
+        ]);
         done();
       });
     });
@@ -627,6 +754,10 @@ describe('RequestQueue', function () {
       queueAndVerifyNoReplace('PUT', 'POST', function (results) {
         expectEventEmitted('itemupdated', testFullPath);
         expectQueueChangedEmitted();
+        expectRequestChangedEmitted([
+          getRequestChangeObject(testPath, testName, 'PUT'),
+          getRequestChangeObject(testPath, testName, 'PUT')
+        ]);
         done();
       });
     });
@@ -635,6 +766,10 @@ describe('RequestQueue', function () {
       queueAndVerifyReplace('POST', 'POST', function (results) {
         expectEventEmitted('itemupdated', testFullPath);
         expectQueueChangedEmitted();
+        expectRequestChangedEmitted([
+          getRequestChangeObject(testPath, testName, 'POST'),
+          getRequestChangeObject(testPath, testName, 'POST')
+        ]);
         done();
       });
     });
@@ -644,6 +779,11 @@ describe('RequestQueue', function () {
         expectEventEmitted('itemupdated', testFullPath, true);
         expectEventEmitted('itemupdated', testFullDestPath, true);
         expectQueueChangedEmitted();
+        expectRequestChangedEmitted([
+          getRequestChangeObject(testPath, testName, 'DELETE'),
+          getRequestChangeObject(testDestPath, testDestName, 'PUT'),
+          getRequestChangeObject(testPath, testName, 'POST')
+        ]);
         done();
       });
     });
@@ -653,6 +793,10 @@ describe('RequestQueue', function () {
         expectEventEmitted('itemupdated', testFullPath, true);
         expectEventEmitted('itemupdated', testFullDestPath, true);
         expectQueueChangedEmitted();
+        expectRequestChangedEmitted([
+          getRequestChangeObject(testDestPath, testDestName, 'PUT'),
+          getRequestChangeObject(testPath, testName, 'POST')
+        ]);
         done();
       });
     });
@@ -661,6 +805,10 @@ describe('RequestQueue', function () {
       queueAndVerifyReplace('DELETE', 'POST', function (results) {
         expectEventEmitted('itemupdated', testFullPath, true);
         expectQueueChangedEmitted();
+        expectRequestChangedEmitted([
+          getRequestChangeObject(testPath, testName, 'DELETE'),
+          getRequestChangeObject(testPath, testName, 'POST')
+        ]);
         done();
       });
     });
@@ -688,6 +836,10 @@ describe('RequestQueue', function () {
         expectEventEmitted('itemupdated', testFullPath, true);
         expectEventEmitted('itemupdated', testFullDestPath, true);
         expectQueueChangedEmitted();
+        expectRequestChangedEmitted([
+          getRequestChangeObject(testPath, testName, 'DELETE'),
+          getRequestChangeObject(testDestPath, testDestName, 'PUT')
+        ]);
         done();
       });
     });
@@ -706,6 +858,11 @@ describe('RequestQueue', function () {
         expectEventEmitted('itemupdated', testFullPath, true);
         expectEventEmitted('itemupdated', testFullDestPath, true);
         expectQueueChangedEmitted();
+        expectRequestChangedEmitted([
+          getRequestChangeObject(testPath, testName, 'DELETE'),
+          getRequestChangeObject(testDestPath, testDestName, 'PUT'),
+          getRequestChangeObject(testPath, testName, 'POST')
+        ]);
         done();
       });
     });
@@ -716,6 +873,11 @@ describe('RequestQueue', function () {
         expectEventEmitted('itemupdated', testFullPath, true);
         expectEventEmitted('itemupdated', testFullDestPath, true);
         expectQueueChangedEmitted();
+        expectRequestChangedEmitted([
+          getRequestChangeObject(testPath, testName, 'DELETE'),
+          getRequestChangeObject(testDestPath, testDestName, 'PUT'),
+          getRequestChangeObject(testPath, testName, 'POST')
+        ]);
         done();
       });
     });
@@ -726,6 +888,12 @@ describe('RequestQueue', function () {
         expectEventEmitted('itemupdated', testFullPath, true);
         expectEventEmitted('itemupdated', testFullDestPath);
         expectQueueChangedEmitted();
+        expectRequestChangedEmitted([
+          getRequestChangeObject(testPath, testName, 'DELETE'),
+          getRequestChangeObject(testDestPath, testDestName, 'PUT'),
+          getRequestChangeObject(testPath, testName, 'DELETE'),
+          getRequestChangeObject(testDestPath, testDestName, 'PUT')
+        ]);
         done();
       });
     });
@@ -736,6 +904,11 @@ describe('RequestQueue', function () {
         expectEventEmitted('itemupdated', testFullPath, true);
         expectEventEmitted('itemupdated', testFullDestPath);
         expectQueueChangedEmitted();
+        expectRequestChangedEmitted([
+          getRequestChangeObject(testPath, testName, 'DELETE'),
+          getRequestChangeObject(testDestPath, testDestName, 'PUT'),
+          getRequestChangeObject(testDestPath, testDestName, 'PUT')
+        ]);
         done();
       });
     });
@@ -746,6 +919,11 @@ describe('RequestQueue', function () {
         expectEventEmitted('itemupdated', testFullPath, true);
         expectEventEmitted('itemupdated', testFullDestPath, true);
         expectQueueChangedEmitted();
+        expectRequestChangedEmitted([
+          getRequestChangeObject(testPath, testName, 'DELETE'),
+          getRequestChangeObject(testPath, testName, 'DELETE'),
+          getRequestChangeObject(testDestPath, testDestName, 'PUT')
+        ]);
         done();
       });
     });
@@ -760,6 +938,9 @@ describe('RequestQueue', function () {
         expectEventEmitted('itemupdated', testFullPath, true);
         expectEventEmitted('itemupdated', testFullDestPath, true);
         expectQueueChangedEmitted();
+        expectRequestChangedEmitted([
+          getRequestChangeObject(testDestPath, testDestName, 'PUT')
+        ]);
         done();
       });
     });
@@ -781,6 +962,10 @@ describe('RequestQueue', function () {
         expectEventEmitted('itemupdated', testFullPath, true);
         expectEventEmitted('itemupdated', testFullDestPath, true);
         expectQueueChangedEmitted();
+        expectRequestChangedEmitted([
+          getRequestChangeObject(testPath, testName, 'PUT'),
+          getRequestChangeObject(testDestPath, testDestName, 'PUT')
+        ]);
         done();
       });
     });
@@ -812,6 +997,10 @@ describe('RequestQueue', function () {
             expectEventEmitted('itemupdated', testFullPath, true);
             expectEventEmitted('itemupdated', testFullDestPath, true);
             expectQueueChangedEmitted();
+            expectRequestChangedEmitted([
+              getRequestChangeObject(testPath, testName, 'POST'),
+              getRequestChangeObject(testDestPath, testDestName, 'PUT')
+            ]);
             done();
           });
         });
@@ -826,6 +1015,11 @@ describe('RequestQueue', function () {
         expectEventEmitted('itemupdated', testFullPath, true);
         expectEventEmitted('itemupdated', testFullDestPath);
         expectQueueChangedEmitted();
+        expectRequestChangedEmitted([
+          getRequestChangeObject(testPath, testName, 'DELETE'),
+          getRequestChangeObject(testDestPath, testDestName, 'PUT'),
+          getRequestChangeObject(testDestPath, testDestName, 'PUT')
+        ]);
         done();
       });
     });
@@ -841,6 +1035,10 @@ describe('RequestQueue', function () {
             expectEventEmitted('itemupdated', testFullPath, true);
             expectEventEmitted('itemupdated', testFullDestPath);
             expectQueueChangedEmitted();
+            expectRequestChangedEmitted([
+              getRequestChangeObject(testDestPath, testDestName, 'PUT'),
+              getRequestChangeObject(testDestPath, testDestName, 'PUT')
+            ]);
             done();
           });
         });
@@ -855,6 +1053,10 @@ describe('RequestQueue', function () {
         expectEventEmitted('itemupdated', testFullPath, true);
         expectEventEmitted('itemupdated', testFullDestPath, true);
         expectQueueChangedEmitted();
+        expectRequestChangedEmitted([
+          getRequestChangeObject(testPath, testName, 'DELETE'),
+          getRequestChangeObject(testDestPath, testDestName, 'PUT')
+        ]);
         done();
       });
     });
