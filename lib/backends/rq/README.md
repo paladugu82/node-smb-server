@@ -81,6 +81,22 @@ Take the following examples that happen in a short period of time:
 These are just a few examples, but there are many more. The purpose of the optimization is to ensure that data transfer
 to the remote share is minimized.
 
+##### Request Queue Events
+
+The request queue sends the following events.
+
+* _requestchanged_: Sent when a request has been added to, updated in, or removed from the queue.
+  * (Object) _data_: Data for the event.
+    * (String) _path_: The server path of the file associated with the request.
+    * [String] _method_: The currently queued http method of the request. This will not be present if `removed` is `true`.
+    * [Number] _timestamp_: The timestamp when the request was last updated. This will not be present if `removed` is `true`.
+    * [Boolean] _removed_: If present and `true`, signifies that the request was previously queued but was removed.
+*_itemupdated_: Emitted when an existing entry is removed or updated.
+  * (String) _path_: Server path of the request that was updated.
+* _queuechanged_: Sent when one or more requests have been added to, updated in, or removed from the queue.
+* _pathupdated_: All descendants of a given path were changed to a new path in, or were removed from, the queue.
+  * (String) _oldPath_: The path whose entries descendants were changed or removed.
+
 #### Request Queue Processor
 
 This is a continually running process that periodically checks the entries in the [Request Queue][RQ]. If an entry in
@@ -89,6 +105,43 @@ if the queued entry is a `delete` then the processor will delete the file from t
 
 The frequency that the processor will check the request queue, and the "expiration" age of an entry can be defined in
 the backend's [Configiration][CONFIG].
+
+##### Request Queue Processor Events
+
+These events are sent by the processor.
+
+* _syncabort_: The processor has canceled an in-progress upload.
+  * (Object) _data_: Data for the event.
+    * (String) _path_: The server path of the file.
+    * (String) _file_: The full local path of the file.
+* _syncerr_: Sent if the processor encounters an error while uploading a file.
+  * (Object) _data_: Data for the event.
+    * (String) _path_: The server path of the file.
+    * (String) _file_: The full local path of the file.
+    * (String) _method_: HTTP method of the operation.
+    * (String) _err_: The error that occurred.
+* _syncend_: A file has finished processing a file successfully.
+  * (Object) _data_: Data for the event.
+    * (String) _path_: The server path of the file.
+    * (String) _file_: The full local path of the file.
+    * (String) _method_: HTTP method of the operation.
+* _syncstart_: The processor began processing a file.
+  * (Object) _data_: Data for the event.
+    * (String) _path_: The server path of the file.
+    * (String) _file_: The full local path of the file.
+    * (String) _method_: HTTP method of the operation.
+* _syncstart_: The processor began processing a file.
+  * (Object) _data_: Data for the event.
+    * (String) _path_: The server path of the file.
+    * (String) _file_: The full local path of the file.
+    * (Number) _read_: The number of bytes transferred so far. 
+    * [Number] _total_: The total number of bytes to transfer. Will be missing or 0 if total size is not available. 
+    * (Number) _rate_: The rate, in bytes per second, that the file is transferring. 
+    * (Number) _elapsed_: The amount of time, in milliseconds, that have elapsed since the file started to transfer.
+* _error_: The processor encountered a general error.
+  * (Error) _err_: The error that occurred.
+* _purged_: One or more files failed to transfer after the [configured][CONFIG] number of attempts.
+  * (Array) _purged_: List of server paths.
 
 ## Configuration
 
