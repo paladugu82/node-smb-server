@@ -4,7 +4,6 @@
     "host" : "0.0.0.0"
   },
   "domainName" : "",
-  "allowAnonymous" : false,
   "smb2Support": false,
   "extendedSecurity": true,
   "users" : {
@@ -38,6 +37,7 @@
         "pass": "<pwd>"
       },
       "maxSockets": 64,
+      "allCacheTTL": 1800000,
       "contentCacheTTL": 30000,
       "binCacheTTL": 600000
     },
@@ -53,6 +53,7 @@
       },
       "path": "/",
       "maxSockets": 64,
+      "allCacheTTL": 1800000,
       "contentCacheTTL": 30000,
       "binCacheTTL": 600000
     },
@@ -67,6 +68,7 @@
         "pass": "<pwd>"
       },
       "maxSockets": 64,
+      "allCacheTTL": 1800000,
       "contentCacheTTL": 30000,
       "binCacheTTL": 600000,
       "expiration": 30000,
@@ -84,19 +86,7 @@
         "backend": "fs",
         "description": "fs test share work",
         "path": "./smbrqwork"
-      },
-      "events": [
-        "syncfilestart",
-        "syncfileend",
-        "syncfileerr",
-        "syncfileabort",
-        "syncfileprogress",
-        "syncerr",
-        "syncpurged",
-        "syncconflict",
-        "folderlist",
-        "requestqueueinit"
-      ]
+      }
     }
   }
 }

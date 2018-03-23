@@ -9,16 +9,21 @@
       "level": "debug",
       "timestamp": true,
       "json": false,
-      "maxsize": 5242880,
+      "maxsize": 52428800,
       "maxFiles": 10,
       "zippedArchive": true,
       "tailable": true,
-      "filename": "./server.log"
+      "filename": "./server.log",
+      "handleExceptions": true,
+      "humanReadableUnhandledException": true
     }
   },
   "smb": {
+    "config": "default"
+  },
+  "smbcmd": {
     "console": {
-      "level": "info",
+      "level": "warn",
       "colorize": true,
       "label": "SMB"
     },
@@ -26,80 +31,24 @@
       "level": "debug",
       "timestamp": true,
       "json": false,
-      "maxsize": 5242880,
+      "maxsize": 52428800,
       "maxFiles": 10,
       "zippedArchive": true,
       "tailable": true,
-      "filename": "./smb.log"
+      "filename": "./smb-cmd.log"
     }
   },
   "spi": {
-    "console": {
-      "level": "info",
-      "colorize": true,
-      "label": "SPI"
-    },
-    "file": {
-      "level": "debug",
-      "timestamp": true,
-      "json": false,
-      "maxsize": 5242880,
-      "maxFiles": 10,
-      "zippedArchive": true,
-      "tailable": true,
-      "filename": "./spi.log"
-    }
+    "config": "default"
   },
   "perf": {
-    "console": {
-      "level": "info",
-      "colorize": true,
-      "label": "PERF"
-    },
-    "file": {
-      "level": "debug",
-      "timestamp": true,
-      "json": false,
-      "maxsize": 5242880,
-      "maxFiles": 10,
-      "zippedArchive": true,
-      "tailable": true,
-      "filename": "./perf.log"
-    }
+    "config": "default"
   },
   "rq": {
-    "console": {
-      "level": "info",
-      "colorize": true,
-      "label": "RQ"
-    },
-    "file": {
-      "level": "debug",
-      "timestamp": true,
-      "json": false,
-      "maxsize": 5242880,
-      "maxFiles": 10,
-      "zippedArchive": true,
-      "tailable": true,
-      "filename": "./rq.log"
-    }
+    "config": "default"
   },
   "dcerpc": {
-    "console": {
-      "level": "info",
-      "colorize": true,
-      "label": "DCERPC"
-    },
-    "file": {
-      "level": "debug",
-      "timestamp": true,
-      "json": false,
-      "maxsize": 5242880,
-      "maxFiles": 10,
-      "zippedArchive": true,
-      "tailable": true,
-      "filename": "./dcerpc.log"
-    }
+    "config": "default"
   },
   "request": {
     "console": {
@@ -111,7 +60,7 @@
       "level": "debug",
       "timestamp": true,
       "json": false,
-      "maxsize": 5242880,
+      "maxsize": 52428800,
       "maxFiles": 10,
       "zippedArchive": true,
       "tailable": true,
