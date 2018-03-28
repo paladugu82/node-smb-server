@@ -253,9 +253,10 @@ exists in the local share, the backend will behave according to the instructions
 is to simply return without doing anything.
   * (Object) _data_: Data for the event.
     * (String) _path_: Path of the file to download.
-    * (Boolean) _openIfExists_: If true and the file exists, then the backend emits the `openasset` event. Default: 
-    false.
     * (Boolean) _force_: If true and the file exists, then the file will be removed and downloaded again.
+  * (Function) _callback_: This event supports a callback, which will be invoked after the asset is has been downloaded.
+  The callback will still be invoked if the asset was already downloaded previously.
+    * (Error) _err_: Will be set to the error if one occurred.
 * _checkcachesize_: When received, the backend will analyze the current size of the local share. If the size exceeds the
 supplied maximum size then the backend will emit `cachesize`.
   * (Object) _data_: Data for the event.
@@ -264,7 +265,13 @@ supplied maximum size then the backend will emit `cachesize`.
 share. 
   * (Object) _data_: Data for the event.
     * (String) _path_: Path of the file.
-
+* _isdownloaded_: Determines whether or not an asset has already been downloaded or not.
+  * (Object) _data_: Data for the event.
+    * (String) _path_: Path of the file.
+  * (Function) _callback_: Will be invoked with the result of the operation
+    * (Error) _err_: Will be set to the error if one occurred.
+    * (Boolean) _isDownloaded_: Will be `true` if the asset is already downloaded, otherwise `false`.
+    
 ## Download Strategy
 
 The backend does several things to ensure that files are downloaded from the remote share to the local share correctly.

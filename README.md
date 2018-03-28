@@ -253,6 +253,8 @@ events each one supports.
   * (Object) _data_: Details about the event.
     * (String) _event_: The name of the event.
     * (Object) _data_: Extended information specific to the event.
+    * (Function) _callback_: An optional callback that will be invoked when the server has finished processing the 
+    event. See [backend's documentation][BACKENDS] to see which events support callbacks.
   
 
 The SMB Server also provides a way for sending events <i>to</i> the server. Use a server instance's
