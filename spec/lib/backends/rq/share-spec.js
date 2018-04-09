@@ -54,18 +54,6 @@ describe('RQShare', function () {
     });
   });
 
-  it('testDownloadAssetExistsOpenIfExists', function (done) {
-    c.addCachedFile('/testexists.jpg', function () {
-      c.testShare.on('shareEvent', function (data) {
-        if (data.event == 'openasset') {
-          expect(data.data.path).toEqual('/testexists.jpg');
-          done();
-        }
-      });
-      c.testShare.onServerEvent(c.testContext, 'downloadasset', {path: '/testexists.jpg', openIfExists: true});
-    });
-  });
-
   it('testUploadAssetEvent', function (done) {
     c.addQueuedFile('/testupload.jpg', function () {
       c.testShare.on('shareEvent', function (data) {
@@ -103,6 +91,56 @@ describe('RQShare', function () {
         }
       });
       c.testShare.onServerEvent(c.testContext, 'uploadasset', {path: '/testcancel.jpg'});
+    });
+  });
+
+  it('testNetworkLoss', function (done) {
+    c.addFile(c.remoteTree, '/networkloss.jpg', function () {
+      c.registerUrl('/networkloss.jpg', function (url, headers, cb) {
+        cb('there was an error!');
+      });
+      c.testShare.on('shareEvent', function (data) {
+        if (data.event == 'networkloss') {
+          c.expectLocalFileExist('/networkloss500.jpg', false, false, done);
+        }
+      });
+      c.testShare.onServerEvent(c.testContext, 'downloadasset', {path: '/networkloss.jpg'});
+    });
+  });
+
+  it('testNetworkLoss500', function (done) {
+    c.addFile(c.remoteTree, '/networkloss500.jpg', function () {
+      c.registerUrl('/networkloss500.jpg', function (url, headers, cb) {
+        cb(null, 500);
+      });
+      c.testShare.on('shareEvent', function (data) {
+        if (data.event == 'networkloss') {
+          expect(false).toBeTruthy();
+        }
+      });
+      c.testShare.onServerEvent(c.testContext, 'downloadasset', {path: '/networkloss500.jpg'}, function (err) {
+        expect(err).toBeTruthy();
+        c.expectLocalFileExist('/networkloss500.jpg', false, false, done);
+      });
+    });
+  });
+
+  it('testNetworkLoss501', function (done) {
+    var loss = false;
+    c.addFile(c.remoteTree, '/networkloss501.jpg', function () {
+      c.registerUrl('/networkloss501.jpg', function (url, headers, cb) {
+        cb(null, 501);
+      });
+      c.testShare.on('shareEvent', function (data) {
+        if (data.event == 'networkloss') {
+          loss = true;
+        }
+      });
+      c.testShare.onServerEvent(c.testContext, 'downloadasset', {path: '/networkloss501.jpg'}, function (err) {
+        expect(err).toBeTruthy();
+        expect(loss).toBeTruthy();
+        c.expectLocalFileExist('/networkloss501.jpg', false, false, done);
+      });
     });
   });
 });

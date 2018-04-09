@@ -49,48 +49,53 @@ TestRequest.prototype.setResponseCallback = function (callback) {
   var self = this;
   this.setReadStream(function (readCb) {
     callback(self.url, self.headers, function (err, statusCode, data) {
+      if (statusCode != 200) {
+        _doEnd.call(self, err, statusCode, data);
+        data = undefined;
+      }
       readCb(err, data);
     });
   });
   this.resCb = callback;
 };
 
+function _doEnd(err, statusCode, endData, cb) {
+  var self = this;
+  if (err) {
+    self.emit('error', err);
+    if (cb) {
+      cb(err);
+    }
+    if (self.reqCb) {
+      self.reqCb(err);
+    }
+  } else {
+    if (!statusCode) {
+      statusCode = self.statusCode;
+    }
+    var res = new TestResponse(statusCode);
+
+    if (endData) {
+      res.write(endData);
+    }
+
+    res.on('finish', function () {
+      if (self.reqCb) {
+        self.reqCb(null, res, res.getWritten());
+      }
+      self.emit('response', res);
+      res.emit('end');
+      self.emit('end');
+      if (cb) {
+        cb(null, res);
+      }
+    });
+    res.end();
+  }
+}
+
 TestRequest.prototype.end = function (data, encoding, cb) {
   var self = this;
-
-  function _doEnd(err, statusCode, endData) {
-    if (err) {
-      self.emit('error', err);
-      if (cb) {
-        cb(err);
-      }
-      if (self.reqCb) {
-        self.reqCb(err);
-      }
-    } else {
-      if (!statusCode) {
-        statusCode = self.statusCode;
-      }
-      var res = new TestResponse(statusCode);
-
-      if (endData) {
-        res.write(endData);
-      }
-
-      res.on('finish', function () {
-        if (self.reqCb) {
-          self.reqCb(null, res, res.getWritten());
-        }
-        self.emit('response', res);
-        res.emit('end');
-        self.emit('end');
-        if (cb) {
-          cb(null, res);
-        }
-      });
-      res.end();
-    }
-  }
 
   function getTargetUrl(currUrl, targetUrl) {
     var currParsed = URL.parse(currUrl);
@@ -129,11 +134,13 @@ TestRequest.prototype.end = function (data, encoding, cb) {
         if (self.resCb) {
           self.resCb(self.url, self.headers, function (err, statusCode, data) {
             requestCb(self.url, self.method, self.headers, reqData, function () {
-              _doEnd(err, statusCode, data);
+              _doEnd.call(self, err, statusCode, data, cb);
             });
           });
         } else {
-          requestCb(self.url, self.method, self.headers, reqData, _doEnd);
+          requestCb(self.url, self.method, self.headers, reqData, function (err, statusCode, data) {
+            _doEnd.call(self, err, statusCode, data, cb);
+          });
         }
       }
     });
