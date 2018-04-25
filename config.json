@@ -64,8 +64,8 @@
       "port": 4502,
       "protocol": "http:",
       "auth": {
-        "user": "admin",
-        "pass": "admin"
+        "user": "<user>",
+        "pass": "<pwd>"
       },
       "maxSockets": 64,
       "allCacheTTL": 1800000,
