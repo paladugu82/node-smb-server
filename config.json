@@ -76,6 +76,7 @@
       "maxRetries": 3,
       "retryDelay": 10000,
       "modifiedThreshold": 100,
+      "chunkUploadSize": 1,
       "tmpPath": "./smbrqroot",
       "local":{
         "backend": "fs",
