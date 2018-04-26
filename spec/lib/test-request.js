@@ -23,6 +23,21 @@ var requestCb = function (url, method, headers, data, cb) {
   cb();
 }
 
+function TestForm(req) {
+  this.data = {};
+  this.req = req;
+};
+
+TestForm.prototype.append = function (name, value) {
+  var self = this;
+  this.data[name] = value;
+  if (value.pipe) {
+    process.nextTick(function () {
+      value.pipe(self.req);
+    });
+  }
+};
+
 function TestRequest(options, reqCb) {
   TestStream.call(this, 'test-request');
 
@@ -33,6 +48,7 @@ function TestRequest(options, reqCb) {
   this.statusCode = 501;
   this.resCb = false;
   this.reqCb = reqCb;
+  this.reqForm = new TestForm(this);
 }
 
 util.inherits(TestRequest, TestStream);
@@ -142,6 +158,10 @@ TestRequest.prototype.end = function (data, encoding, cb) {
 
 TestRequest.prototype.abort = function () {
   this.aborted = true;
+};
+
+TestRequest.prototype.form = function () {
+  return this.reqForm;
 };
 
 function TestResponse(statusCode) {
