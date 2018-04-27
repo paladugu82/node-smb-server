@@ -227,6 +227,10 @@ RQCommon.prototype.registerUrl = function (path, cb) {
   this.request.registerUrl(this.urlPrefix + this.remotePrefix + path, cb);
 };
 
+RQCommon.prototype.unregisterUrl = function (path) {
+  this.request.unregisterUrl(this.urlPrefix + this.remotePrefix + path);
+};
+
 RQCommon.prototype.setUrlData = function (path, data) {
   this.request.setUrlData(this.urlPrefix + this.remotePrefix + path, data);
 };

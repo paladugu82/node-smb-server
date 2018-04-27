@@ -62,7 +62,7 @@ TestRequest.prototype.setResponseCallback = function (callback) {
 function _doEnd(err, statusCode, endData, cb) {
   var self = this;
   if (err) {
-    self.emit('error', err);
+    self.emitError(err);
     if (cb) {
       cb(err);
     }

@@ -143,4 +143,53 @@ describe('RQShare', function () {
       });
     });
   });
+
+  it('testNetworkRestored', function (done) {
+    var eventCalls = {};
+    c.addFile(c.remoteTree, '/networkrestored.jpg', function () {
+      c.registerUrl('/networkrestored.jpg', function (url, header, cb) {
+        // lose the network only on the first run
+        c.unregisterUrl('/networkrestored.jpg');
+        cb('network lost!');
+      });
+      c.testShare.on('shareEvent', function (data) {
+        if (!eventCalls[data.event]) {
+          eventCalls[data.event] = 0;
+        }
+        eventCalls[data.event]++;
+      });
+      c.testShare.onServerEvent(c.testContext, 'downloadasset', {path: '/networkrestored.jpg'}, function (err) {
+        expect(err).toBeTruthy();
+        expect(eventCalls['networkloss']).toEqual(1);
+        expect(eventCalls['networkrestored']).toBeFalsy();
+
+        c.testShare.onServerEvent(c.testContext, 'downloadasset', {path: '/networkrestored.jpg'}, function (err) {
+          expect(err).toBeFalsy();
+          expect(eventCalls['networkloss']).toEqual(1);
+          expect(eventCalls['networkrestored']).toEqual(1);
+
+          c.testShare.onServerEvent(c.testContext, 'downloadasset', {path: '/networkrestored.jpg'}, function (err) {
+            expect(err).toBeFalsy();
+            expect(eventCalls['networkloss']).toEqual(1);
+            expect(eventCalls['networkrestored']).toEqual(1);
+            done();
+          });
+        });
+      });
+    });
+  });
+
+  it('testNetworkNoRestored', function (done) {
+    c.addFile(c.remoteTree, '/networknorestored.jpg', function () {
+      c.testShare.on('shareEvent', function (data) {
+        if (data.event == 'networkrestored') {
+          expect(false).toBeTruthy();
+        }
+      });
+      c.testShare.onServerEvent(c.testContext, 'downloadasset', {path: '/networknorestored.jpg'}, function (err) {
+        expect(err).toBeFalsy();
+        done();
+      });
+    });
+  });
 });
