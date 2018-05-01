@@ -57,7 +57,12 @@ function RQCommon(config) {
       ],
       host: host,
       port: port,
-      noprocessor: true
+      noprocessor: true,
+      options: {
+        headers: {
+          'user-agent': 'unit test framework'
+        }
+      }
     };
   }
 

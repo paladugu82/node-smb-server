@@ -67,6 +67,11 @@
         "user": "<user>",
         "pass": "<pwd>"
       },
+      "options": {
+        "headers": {
+          "user-agent": "smb server rq backend"
+        }
+      },
       "maxSockets": 64,
       "allCacheTTL": 1800000,
       "contentCacheTTL": 30000,

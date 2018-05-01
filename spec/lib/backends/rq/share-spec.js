@@ -192,4 +192,24 @@ describe('RQShare', function () {
       });
     });
   });
+
+  describe('CustomHeaderTests', function () {
+    it('testCustomConfigHeaders', function (done) {
+      var statusCode = 201;
+      c.registerUrl('/testconfig.jpg', function (url, headers, cb) {
+        var currCode = statusCode;
+        statusCode = 200;
+        expect(headers['user-agent']).toBeTruthy();
+        if (currCode == 200) {
+          expect(headers['x-smbserver-action']).toEqual('downloadfile');
+        } else {
+          expect(headers['x-smbserver-action']).toEqual('createfile');
+        }
+        cb(null, currCode, 'testconfig');
+      });
+      c.addCachedFile('/testconfig.jpg', function () {
+        done();
+      });
+    });
+  });
 });
