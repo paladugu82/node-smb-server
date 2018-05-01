@@ -110,24 +110,41 @@ function RQCommon(config) {
   self.request.setRequestCallback(function (url, method, headers, options, cb) {
     var path = stripUrlPrefix(url);
     if (method == 'POST') {
+      var substrIndex = path.indexOf('.createasset.html')
+      var form = options['form'];
+      if(substrIndex >= 0) {
+      	var filename = '/' + form['fileName'];
+      	var actualUrl = path.substring(0, substrIndex);
+      	var contentPrefix = RQCommon.getFullRemoteContentPrefix();
+      	var relPath = actualUrl.substring(contentPrefix.length, actualUrl.length);
+      	url = self.urlPrefix + relPath + filename;
+      	path = stripUrlPrefix(url);
+      }
+      
       var jsonUrl = url + self.jsonSelector;
       var jsonUrlShort = url + '.json';
-      var name = utils.getPathName(path);
-      var entityData;
-      if (headers['Content-Type'] == 'application/json; charset=utf-8') {
-        entityData = MockRepo.getFolderData(name);
-      } else {
-        entityData = MockRepo.getFileData(name, options.data.length);
-      }
-      self.mockRepo.addEntity(path, entityData, function () {
-        self.request.registerUrl(jsonUrl, function (url, headers, jsonCallback) {
-          getEntityJson(path, true, jsonCallback);
-        });
-        self.request.registerUrl(jsonUrlShort, function (url, headers, jsonCallback) {
-          getEntityJson(path, false, jsonCallback);
-        });
-        cb();
-      });
+     
+    	if( form && form ['replaceAsset']) {
+    		self.mockRepo.setSize(path, form['file@Length'], cb);
+    	} else {
+	      var name = utils.getPathName(path);
+				var entityData;
+			
+				if (headers['Content-Type'] == 'application/json; charset=utf-8') {
+					entityData = MockRepo.getFolderData(name);
+				} else {
+					entityData = MockRepo.getFileData(name, options.data.length);
+				}
+				self.mockRepo.addEntity(path, entityData, function () {
+					self.request.registerUrl(jsonUrl, function (url, headers, jsonCallback) {
+						getEntityJson(path, true, jsonCallback);
+					});
+					self.request.registerUrl(jsonUrlShort, function (url, headers, jsonCallback) {
+						getEntityJson(path, false, jsonCallback);
+					});
+					cb();
+				});
+			}
     } else if (method == 'PUT') {
       self.mockRepo.setSize(path, options.data.length, cb);
     } else if (method == 'DELETE') {
@@ -176,6 +193,9 @@ RQCommon.getHostRemotePrefix = function () {
 RQCommon.getFullRemotePrefix = function () {
   return 'http://' + RQCommon.getHost() + ':' + RQCommon.getPort() + '/api/assets';
 };
+RQCommon.getFullRemoteContentPrefix = function () {
+  return 'http://' + RQCommon.getHost() + ':' + RQCommon.getPort() + '/content/dam';
+};
 
 RQCommon.getFullRemotePrefixWithPath = function () {
   return RQCommon.getFullRemotePrefix() + RQCommon.getRemotePrefix();
@@ -216,7 +236,8 @@ RQCommon.prototype.wasPathRequested = function (path) {
 
 RQCommon.prototype.getPathMethodRequestCount = function (path, method) {
   var testPath = RQCommon.getFullRemotePrefix() + RQCommon.getRemotePrefix() + path;
-  return this.request.getUrlMethodRequestCount(testPath, method);
+  var assetPath = RQCommon.getFullRemoteContentPrefix() + this.remotePrefix + '.createasset.html' ;  
+  return this.request.getUrlMethodRequestCount(testPath, method, assetPath);
 };
 
 RQCommon.prototype.registerLocalPath = function (path, cb) {
@@ -244,6 +265,8 @@ RQCommon.prototype.registerInfoUrl = function (path, cb) {
 
 RQCommon.prototype.registerPathStatusCode = function (path, statusCode) {
   this.request.registerUrlStatusCode(this.urlPrefix + this.remotePrefix + path, statusCode);
+  var url = RQCommon.getFullRemoteContentPrefix() + this.remotePrefix + '.createasset.html' ;
+  this.request.registerUrlStatusCode(url, statusCode);
 };
 
 RQCommon.prototype.setRemoteFileReadOnly = function (path, readOnly, cb) {
@@ -488,6 +511,24 @@ RQCommon.prototype.addCachedFile = function (path, cb) {
         file.close(function (err) {
           expect(err).toBeFalsy();
           cb();
+        });
+      });
+    });
+  });
+};
+
+RQCommon.prototype.addCachedFileWithLength = function (path, length, cb) {
+  var c = this;
+  c.addFile(c.remoteTree, path, function () {
+    c.testTree.open(path, function (err, file) {
+      file.setLength(length, function (err) {
+        expect(err).toBeFalsy();
+        file.cacheFile(function (err) {
+          expect(err).toBeFalsy();
+          file.close(function (err) {
+            expect(err).toBeFalsy();
+            cb();
+          });
         });
       });
     });

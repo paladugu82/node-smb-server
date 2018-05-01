@@ -423,7 +423,7 @@ describe('RQProcessor', function () {
     });
 
     it('testSyncPathNotQueued', function (done) {
-      c.addCachedFile('/notqueued.jpg', function () {
+      c.addCachedFileWithLength('/notqueued.jpg', 10, function () {
         processor.syncPath('/notqueued.jpg', {
           remotePrefix: RQCommon.getFullRemotePrefixWithPath(),
           localPrefix: RQCommon.getLocalPrefix()

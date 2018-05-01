@@ -28,10 +28,20 @@ function TestForm(req) {
   this.req = req;
 };
 
+function addCreateAssetUrl(url, method, filename) {
+	url = url + '?' + filename;
+ 	addRequestedUrl(url, method);
+}
+
 TestForm.prototype.append = function (name, value) {
   var self = this;
   this.data[name] = value;
   if (value.pipe) {
+  	var method =  self.req.method;
+  	if(self.data['replaceAsset'] == 'true') {
+			method = 'PUT';
+		}  	
+  	addCreateAssetUrl(self.req.url, method, self.data['fileName']);
     process.nextTick(function () {
       value.pipe(self.req);
     });
@@ -146,7 +156,7 @@ TestRequest.prototype.end = function (data, encoding, cb) {
             delete urls[self.url];
           }
         }
-        var reqData = {data: data};
+        var reqData = {data: data, form: self.reqForm.data};
         if (self.resCb) {
           self.resCb(self.url, self.headers, function (err, statusCode, data) {
             requestCb(self.url, self.method, self.headers, reqData, function () {
@@ -268,13 +278,24 @@ function registerUrlStatusCode(url, statusCode) {
   });
 }
 
-function getUrlMethodRequestCount(url, method) {
+function getUrlMethodRequestCount(url, method, serveletUrl) {
+  var total = 0;
   if (requestedUrls[url]) {
     if (requestedUrls[url][method]) {
-      return requestedUrls[url][method];
+      total += requestedUrls[url][method];
     }
   }
-  return 0;
+  if(serveletUrl != undefined) {
+  	var name = url.substring(url.lastIndexOf("/")+1, url.length);
+  	serveletUrl = serveletUrl + '?' + name;
+  	if (requestedUrls[serveletUrl]) {
+			if (requestedUrls[serveletUrl][method]) {
+				total += requestedUrls[serveletUrl][method];
+			}
+  	}
+  }
+  
+  return total;
 }
 
 function wasUrlRequested(url) {
