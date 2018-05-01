@@ -58,14 +58,14 @@ TestStream.prototype.pipe = function (other) {
   var self = this;
 
   function _emitEnd(data) {
-    self.emit('end');
+    self.end();
     other.end(data, 'utf8');
   }
 
   if (this.readCb) {
     this.readCb(function (err, data) {
       if (err) {
-        self.emit('error', err);
+        self.emitError(err);
       } else {
         self.emit('data', data);
         _emitEnd(data);
@@ -78,6 +78,13 @@ TestStream.prototype.pipe = function (other) {
 
 TestStream.prototype.getWritten = function () {
   return this.written;
+};
+
+TestStream.prototype.emitError = function (err) {
+  if (!this.errorEmitted) {
+    this.errorEmitted = true;
+    this.emit('error', err);
+  }
 };
 
 module.exports = TestStream;

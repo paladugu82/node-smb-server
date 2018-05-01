@@ -30,7 +30,7 @@ describe('RQTreeConnection', function () {
           }, 500);
         }
       });
-      c.testShare.emit('downloadasset', {path: '/download.jpg', context: c.testContext});
+      c.testShare.emit('downloadasset', {options: {path: '/download.jpg'}, context: c.testContext});
     });
   });
   
@@ -40,7 +40,7 @@ describe('RQTreeConnection', function () {
       c.testShare.on('shareEvent', function () {
         sent = true;
       });
-      c.testShare.emit('downloadasset', {path: '/existing.jpg', context: c.testContext});
+      c.testShare.emit('downloadasset', {options: {path: '/existing.jpg'}, context: c.testContext});
       setTimeout(function () {
         expect(sent).toBeFalsy();
         done();
@@ -48,15 +48,12 @@ describe('RQTreeConnection', function () {
     });
   });
 
-  it('testDownloadAssetExistingOpen', function (done) {
-    c.addCachedFile('/existing.jpg', function () {
-      c.testShare.on('shareEvent', function (data) {
-        if (data.event == 'openasset') {
-          expect(data.data.path).toEqual('/existing.jpg');
-          done();
-        }
-      });
-      c.testShare.emit('downloadasset', {path: '/existing.jpg', openIfExists: true, context: c.testContext});
+  it('testDownloadAssetCallback', function (done) {
+    c.addFile(c.remoteTree, '/downloadcb.jpg', function () {
+      c.testShare.emit('downloadasset', {options: {path: '/downloadcb.jpg'}, context: c.testContext, callback: function (err) {
+        expect(err).toBeFalsy();
+        c.expectLocalFileExist('/downloadcb.jpg', true, false, done);
+      }});
     });
   });
 
@@ -69,7 +66,42 @@ describe('RQTreeConnection', function () {
           }, 500);
         }
       });
-      c.testShare.emit('downloadasset', {path: '/existing.jpg', force: true, context: c.testContext});
+      c.testShare.emit('downloadasset', {options: {path: '/existing.jpg', force: true}, context: c.testContext});
     });
+  });
+
+  it('testGetLinkedAssets', function (done) {
+    var callback = function (err, assets) {
+      expect(err).toBeFalsy();
+      expect(assets).toBeTruthy();
+      expect(assets.length).toEqual(2);
+      expect(assets[0]).toEqual('/Volumes/DAM/we-retail/en/activities/biking/cycling_1.jpg');
+      expect(assets[1]).toEqual('/Volumes/DAM/we-retail/en/activities/biking/cycling_2.jpg');
+      done();
+    };
+
+    c.request.registerUrl(RQCommon.getHostRemotePrefix() + '/content/dam/testindesign.indd/jcr:content/metadata/xmpMM:Ingredients.1.json', function (url, headers, cb) {
+      cb(null, 200, '{"jcr:primaryType":"nt:unstructured","xmpNodeType":"xmpArray","xmpArraySize":2,"xmpArrayType":"rdf:Bag","1":{"jcr:primaryType":"nt:unstructured","stRef:filePath":"file:///Volumes/DAM/we-retail/en/activities/biking/cycling_1.jpg","stRef:instanceID":"xmp.iid:a2b73b7d-7b74-4c04-97e4-d219a148eead","stRef:maskMarkers":"None","stRef:toPart":"/","stRef:placedResolutionUnit":"Inches","stRef:linkCategory":"Content","stRef:linkForm":"ReferenceStream","xmpNodeType":"xmpStruct","stRef:placedYResolution":"300.00","stRef:documentID":"xmp.did:a2b73b7d-7b74-4c04-97e4-d219a148eead","stRef:fromPart":"/","stRef:placedXResolution":"300.00"},"2":{"jcr:primaryType":"nt:unstructured","stRef:filePath":"file:///Volumes/DAM/we-retail/en/activities/biking/cycling_2.jpg","stRef:instanceID":"xmp.iid:f13e7a82-e18b-48fd-bc67-e08bc04e22a3","stRef:maskMarkers":"None","stRef:toPart":"/","stRef:placedResolutionUnit":"Inches","stRef:linkCategory":"Content","stRef:linkForm":"ReferenceStream","xmpNodeType":"xmpStruct","stRef:placedYResolution":"300.00","stRef:documentID":"xmp.did:f13e7a82-e18b-48fd-bc67-e08bc04e22a3","stRef:fromPart":"/","stRef:placedXResolution":"300.00"}}');
+    });
+
+    c.testShare.emit('getlinkedassets', {context: c.testContext, options: {path: '/testindesign.indd'}, callback: callback});
+  });
+
+  it('testIsDownloaded', function (done) {
+    c.addCachedFile('/testisdownloaded.jpg', function () {
+      c.testShare.emit('isdownloaded', {context: c.testContext, options: {path: '/testisdownloaded.jpg'}, callback: function (err, downloaded) {
+        expect(err).toBeFalsy();
+        expect(downloaded).toBeTruthy();
+        done();
+      }});
+    });
+  });
+
+  it('testIsDownloadedFalse', function (done) {
+    c.testShare.emit('isdownloaded', {context: c.testContext, options: {path: '/testisnotdownloaded.jpg'}, callback: function (err, downloaded) {
+      expect(err).toBeFalsy();
+      expect(downloaded).toBeFalsy();
+      done();
+    }});
   });
 });

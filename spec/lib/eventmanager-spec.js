@@ -53,4 +53,30 @@ describe('EventManager', function () {
       done();
     }, 100);
   });
+
+  it('testGetLastEventEmit', function () {
+    manager.emitEvent(emitter, 'testlastevent', 'test', 50);
+    expect(manager.getLastEventEmit('testlastevent')).toBeTruthy();
+    expect(manager.getLastEventEmit('notsent')).toBeFalsy();
+  });
+
+  it('testGetLastDescribedEventEmit', function () {
+    manager.emitDescribedEvent(emitter, 'getdescribed1', 'testlastdescribedevent', 'test', 50);
+    expect(manager.getLastDecribedEventEmit('getdescribed1', 'testlastdescribedevent')).toBeTruthy();
+    expect(manager.getLastDecribedEventEmit('getdescribed1', 'notsent')).toBeFalsy();
+    expect(manager.getLastDecribedEventEmit('definitelynotsent', 'notsent')).toBeFalsy();
+  });
+
+  it('testRegisterEventEmit', function () {
+    expect(manager.getLastEventEmit('registerevent')).toBeFalsy();
+    manager.registerEventEmit('registerevent');
+    expect(manager.getLastEventEmit('registerevent')).toBeTruthy();
+  });
+
+  it('testRegisterDescribedEventEmit', function () {
+    expect(manager.getLastDecribedEventEmit('registerdesc', 'registerevent')).toBeFalsy();
+    manager.registerDescribedEventEmit('registerdesc', 'registerevent');
+    expect(manager.getLastDecribedEventEmit('registerdesc', 'registerevent')).toBeTruthy();
+    expect(manager.getLastDecribedEventEmit('registerdesc', 'registerevent1')).toBeFalsy();
+  });
 });

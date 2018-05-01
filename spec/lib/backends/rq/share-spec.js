@@ -54,18 +54,6 @@ describe('RQShare', function () {
     });
   });
 
-  it('testDownloadAssetExistsOpenIfExists', function (done) {
-    c.addCachedFile('/testexists.jpg', function () {
-      c.testShare.on('shareEvent', function (data) {
-        if (data.event == 'openasset') {
-          expect(data.data.path).toEqual('/testexists.jpg');
-          done();
-        }
-      });
-      c.testShare.onServerEvent(c.testContext, 'downloadasset', {path: '/testexists.jpg', openIfExists: true});
-    });
-  });
-
   it('testUploadAssetEvent', function (done) {
     c.addQueuedFile('/testupload.jpg', function () {
       c.testShare.on('shareEvent', function (data) {
@@ -103,6 +91,105 @@ describe('RQShare', function () {
         }
       });
       c.testShare.onServerEvent(c.testContext, 'uploadasset', {path: '/testcancel.jpg'});
+    });
+  });
+
+  it('testNetworkLoss', function (done) {
+    c.addFile(c.remoteTree, '/networkloss.jpg', function () {
+      c.registerUrl('/networkloss.jpg', function (url, headers, cb) {
+        cb('there was an error!');
+      });
+      c.testShare.on('shareEvent', function (data) {
+        if (data.event == 'networkloss') {
+          c.expectLocalFileExist('/networkloss500.jpg', false, false, done);
+        }
+      });
+      c.testShare.onServerEvent(c.testContext, 'downloadasset', {path: '/networkloss.jpg'});
+    });
+  });
+
+  it('testNetworkLoss500', function (done) {
+    c.addFile(c.remoteTree, '/networkloss500.jpg', function () {
+      c.registerUrl('/networkloss500.jpg', function (url, headers, cb) {
+        cb(null, 500);
+      });
+      c.testShare.on('shareEvent', function (data) {
+        if (data.event == 'networkloss') {
+          expect(false).toBeTruthy();
+        }
+      });
+      c.testShare.onServerEvent(c.testContext, 'downloadasset', {path: '/networkloss500.jpg'}, function (err) {
+        expect(err).toBeTruthy();
+        c.expectLocalFileExist('/networkloss500.jpg', false, false, done);
+      });
+    });
+  });
+
+  it('testNetworkLoss501', function (done) {
+    var loss = false;
+    c.addFile(c.remoteTree, '/networkloss501.jpg', function () {
+      c.registerUrl('/networkloss501.jpg', function (url, headers, cb) {
+        cb(null, 501);
+      });
+      c.testShare.on('shareEvent', function (data) {
+        if (data.event == 'networkloss') {
+          loss = true;
+        }
+      });
+      c.testShare.onServerEvent(c.testContext, 'downloadasset', {path: '/networkloss501.jpg'}, function (err) {
+        expect(err).toBeTruthy();
+        expect(loss).toBeTruthy();
+        c.expectLocalFileExist('/networkloss501.jpg', false, false, done);
+      });
+    });
+  });
+
+  it('testNetworkRestored', function (done) {
+    var eventCalls = {};
+    c.addFile(c.remoteTree, '/networkrestored.jpg', function () {
+      c.registerUrl('/networkrestored.jpg', function (url, header, cb) {
+        // lose the network only on the first run
+        c.unregisterUrl('/networkrestored.jpg');
+        cb('network lost!');
+      });
+      c.testShare.on('shareEvent', function (data) {
+        if (!eventCalls[data.event]) {
+          eventCalls[data.event] = 0;
+        }
+        eventCalls[data.event]++;
+      });
+      c.testShare.onServerEvent(c.testContext, 'downloadasset', {path: '/networkrestored.jpg'}, function (err) {
+        expect(err).toBeTruthy();
+        expect(eventCalls['networkloss']).toEqual(1);
+        expect(eventCalls['networkrestored']).toBeFalsy();
+
+        c.testShare.onServerEvent(c.testContext, 'downloadasset', {path: '/networkrestored.jpg'}, function (err) {
+          expect(err).toBeFalsy();
+          expect(eventCalls['networkloss']).toEqual(1);
+          expect(eventCalls['networkrestored']).toEqual(1);
+
+          c.testShare.onServerEvent(c.testContext, 'downloadasset', {path: '/networkrestored.jpg'}, function (err) {
+            expect(err).toBeFalsy();
+            expect(eventCalls['networkloss']).toEqual(1);
+            expect(eventCalls['networkrestored']).toEqual(1);
+            done();
+          });
+        });
+      });
+    });
+  });
+
+  it('testNetworkNoRestored', function (done) {
+    c.addFile(c.remoteTree, '/networknorestored.jpg', function () {
+      c.testShare.on('shareEvent', function (data) {
+        if (data.event == 'networkrestored') {
+          expect(false).toBeTruthy();
+        }
+      });
+      c.testShare.onServerEvent(c.testContext, 'downloadasset', {path: '/networknorestored.jpg'}, function (err) {
+        expect(err).toBeFalsy();
+        done();
+      });
     });
   });
 });
