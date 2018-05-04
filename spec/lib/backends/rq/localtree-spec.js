@@ -207,7 +207,7 @@ describe('LocalTreeTests', function () {
     });
 
     it('testCreateFromSourceTempFile', function (done) {
-      c.addFile(c.remoteTree, '/.test', function (remote) {
+      c.forceAddRemoteFile('/.test', function (remote) {
         c.addFile(c.localRawTree, '/.test', function (file) {
           c.localTree.createFromSource(file, remote, true, function (err, local) {
             expect(err).toBeFalsy();

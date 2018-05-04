@@ -155,4 +155,15 @@ MockRepository.prototype.move = function (path, targetPath, cb) {
   });
 };
 
+MockRepository.prototype.printAll = function (cb) {
+  this.db.find({}, function (err, docs) {
+    if (err) {
+      console.log('ERROR while trying to print mock repository contents', err);
+    } else {
+      console.log(docs);
+    }
+    cb();
+  });
+};
+
 module.exports = MockRepository;

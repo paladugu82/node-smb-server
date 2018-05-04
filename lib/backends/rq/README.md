@@ -194,22 +194,6 @@ These are the events that the backend sends as `serverEvent`.
     * (Number) _cacheSize_: Current size of the cache, in bytes.
 * _requestqueueinit_: Sent when the backend has created the request queue instance that it will be using.
   * ([RequestQueue][RQ]) _rq_: The backend's request queue.
-* _syncfilestart_: Emitted when the backend begins uploading a file from the local share to the remote share.
-  * (Object) _data_: Data for the event.
-    * (String) _path_: Server path to the file being uploaded.
-    * (String) _file_: Full path to the local file being uploaded.
-    * (String )_method_: The HTTP method being used to upload the file.
-* _syncfileend_: Sent when the backend finishes uploading a file from the local share to the remote share.
-  * (Object) _data_: Data for the event.
-    * (String) _path_: Server path to the uploaded file.
-    * (String) _file_: Full path to the uploaded local file.
-    * (String) _method_: The HTTP method used to upload the file.
-* _syncfileerr_: Alerts that there was an error while attempting to upload a file from the local share to the remote 
-share.
-  * (Object) _data_: Data for the event.
-    * (String) _path_: Server path to the file being uploaded.
-    * (String) _file_: Full path to the local file being uploaded.
-    * (String )_method_: The HTTP method being used to upload the file.
 * _syncerr_: There was a general error encountered during the upload process.
   * (Object) _data_: Data for the event.
     * (Error) _err_: Details about the error message.
@@ -217,20 +201,6 @@ share.
 queue.
   * (Object) _data_: Data for the event.
     * (Array) _files_: A list of file paths that were removed.
-* _syncfileabort_: Transfer of a file from the local share to the remote share was cancelled prematurely.
-  * (Object) _data_: Data for the event.
-    * (String) _path_: Server path to the file being uploaded.
-    * (String) _file_: Full path to the local file being uploaded.
-* _syncfileprogress_: Sent on a regular interval (approximately once every second) while a file is uploading.
-  * (Object) _data_: Data for the event.
-    * (String) _path_: The uploading file's path.
-    * (String) _serverPath_: Full path to the file in the remote JCR. This is typically the file's full URL.
-    * (String) _file_: Full path of where the file is being uploaded from the local file system.
-    * (Number) _read_: Number of bytes that have been uploaded so far. 
-    * (Number) _total_: Total number of bytes to upload. **Note:** A value of 0 indicates that the total file size is
-    unknown.
-    * (Number) _rate_: The rate at which the file is uploading, in bytes per second.
-    * (Number) _elapsed_: The amount of time that has elapsed since the upload started, in milliseconds.
 * _syncconflict_: Sent when a file is determined to be [in conflict][CONFLICTS].
   * (Object) _data_: Data for the event.
     * (String) _path_: Path of the file in conflict.
@@ -271,6 +241,20 @@ share.
   * (Function) _callback_: Will be invoked with the result of the operation
     * (Error) _err_: Will be set to the error if one occurred.
     * (Boolean) _isDownloaded_: Will be `true` if the asset is already downloaded, otherwise `false`.
+* _getlinkedassets_: Retrieves the paths to all linked assets in a document. In InDesign, for example, a linked asset is
+a reference to an external file that is included in the InDesign document.
+  * (Object) _data_: Data for the event.
+    * (String) _path_: Path of the file.
+  * (Function) _callback_: Will be invoked with the result of the operation
+    * (Error) _err_: Will be set to the error if one occurred.
+    * (Array) _assets_: An array of string paths representing the document's linked assets.
+* _submitrequest_: Creates and submits an HTTP request to the backend's target remote server. The request will include
+all the additional options required to create a successful request
+  * (Object) _options_: Will be used as the options for the node.js HTTP request. At minimum, this should include a `url`
+  element.
+  * (Function) _callback_: Will be invoked with the response of the request.
+    * (Error) _err_: Will be set to the error if one occurred.
+    * (HTTPResponse) _res_: The node.js HTTP Response object representing the request's response. 
     
 ## Download Strategy
 

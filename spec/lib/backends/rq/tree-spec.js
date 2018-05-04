@@ -1198,7 +1198,7 @@ describe('RQTree', function () {
     });
 
     it('testListRemoteTempFile', function (done) {
-      c.addFile(c.remoteTree, '/.temp', function () {
+      c.forceAddRemoteFile('/.temp', function () {
         c.testTree.list('/*', function (err, list) {
           expect(err).toBeFalsy();
           expect(list.length).toEqual(0);
@@ -1259,6 +1259,8 @@ describe('RQTree', function () {
       });
     });
 
+    // FLAKY. This is a flaky test. it seems to work fine when run on its own, but will sometimes fail when run
+    // with all the other tests
     it('testMultipleDownloadFile', function (done) {
       // this test verifies the case where multiple "threads" attempt to download the same file
 
@@ -1310,6 +1312,8 @@ describe('RQTree', function () {
       });
     });
 
+    // FLAKY. This is a flaky test. it seems to work fine when run on its own, but will sometimes fail when run
+    // with all the other tests
     it('testReadMultiple', function (done) {
       var fileName = '/multipleread.jpg';
       var now = new Date().getTime();

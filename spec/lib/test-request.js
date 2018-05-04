@@ -15,6 +15,7 @@ var async = require('async');
 var URL = require('url');
 
 var TestStream = require('./test-stream');
+var utils = require('../../lib/utils');
 
 var requestedUrls = {};
 var urls = {};
@@ -146,7 +147,7 @@ TestRequest.prototype.end = function (data, encoding, cb) {
             delete urls[self.url];
           }
         }
-        var reqData = {data: data};
+        var reqData = {data: data, form: self.reqForm.data};
         if (self.resCb) {
           self.resCb(self.url, self.headers, function (err, statusCode, data) {
             requestCb(self.url, self.method, self.headers, reqData, function () {
@@ -165,6 +166,7 @@ TestRequest.prototype.end = function (data, encoding, cb) {
 
 TestRequest.prototype.abort = function () {
   this.aborted = true;
+  this.emit('abort');
 };
 
 TestRequest.prototype.form = function () {
@@ -255,7 +257,11 @@ function unregisterUrl(url) {
 }
 
 function setUrlData(url, data) {
-  dataz[url].data = data;
+  if (!dataz[url]) {
+    setData(url, {'content-type': utils.lookupMimeType(url)}, data);
+  } else {
+    dataz[url].data = data;
+  }
 }
 
 function setRequestCallback(callback) {

@@ -19,6 +19,14 @@ var URL = require('url');
 describe('RQProcessor', function () {
   var processor, c, rq, config;
 
+  function expectSyncEvent(eventName, eventData) {
+    c.expectShareEvent(eventName, eventData);
+  }
+
+  function expectNotSyncEvent(eventName, eventData) {
+    c.expectNotShareEvent(eventName, eventData);
+  }
+
   beforeEach(function () {
     c = new RQCommon();
 
@@ -56,8 +64,10 @@ describe('RQProcessor', function () {
         });
         processor.sync(config, function (err) {
           expect(err).toBeFalsy();
-          expect(processor.emit).toHaveBeenCalledWith('syncabort', {path: '/testfile', file: '/local/path/testfile'});
-          expect(processor.emit).toHaveBeenCalledWith('syncend', {data: {path: '/testfile', file: '/local/path/testfile', method: 'POST'}, context: jasmine.any(Object)});
+          expectSyncEvent('syncfilestart', {path: '/testfile', method: 'POST'});
+          expectSyncEvent('syncfileabort', {path: '/testfile'});
+          expectNotSyncEvent('syncfileend', {path: '/testfile', method: 'POST'});
+          expectNotSyncEvent('syncfileerr', {path: '/testfile', method: 'POST', err: jasmine.any(String)});
           done();
         });
       });
@@ -73,7 +83,7 @@ describe('RQProcessor', function () {
         }, function (err) {
           expect(err).toBeFalsy();
           c.expectQueuedMethod('/', 'testfile', 'PUT', function () {
-            expect(processor.emit).not.toHaveBeenCalledWith('syncabort', {path: '/testfile', file: '/local/path/testfile'});
+            expectNotSyncEvent('syncfileabort', {path: '/testfile'});
             done();
           });
         });
@@ -90,8 +100,8 @@ describe('RQProcessor', function () {
         });
         processor.sync(config, function (err) {
           expect(err).toBeFalsy();
-          expect(processor.emit).toHaveBeenCalledWith('syncabort', {path: path, file: '/local/path' + path});
-          expect(processor.emit).not.toHaveBeenCalledWith('syncend', {data: {path: path, file: '/local/path' + path, method:'POST'}, context: jasmine.any(Object)});
+          expectSyncEvent('syncfileabort', {path: path});
+          expectNotSyncEvent('syncfileend', {path: path, method:'POST'});
           done();
         });
       });
@@ -112,6 +122,9 @@ describe('RQProcessor', function () {
 
   describe('Sync', function () {
     var testDotFile = function (path, name, done) {
+      c.registerUrl(Path.join(path, name) + '.json', function (url, headers, cb) {
+        cb(null, 200);
+      });
       c.testTree.rq.getProcessRequest = function (context, expiration, maxRetries, cb) {
         cb(null, {
           path: path,
@@ -129,7 +142,7 @@ describe('RQProcessor', function () {
       };
       processor.sync(config, function (err) {
         expect(err).toBeFalsy();
-        expect(processor.emit).toHaveBeenCalledWith('syncerr', {data: {path: Path.join(path, name), file: Path.join(c.localPrefix, path, name), method: 'DELETE', err: jasmine.any(String)}, context: jasmine.any(Object)});
+        expectSyncEvent('syncfileerr', {path: Path.join(path, name), method: 'DELETE', err: jasmine.any(String)});
         done();
       });
     };
@@ -152,9 +165,9 @@ describe('RQProcessor', function () {
           expect(err).toBeFalsy();
           c.expectLocalFileExist('/testfile', true, false, function () {
             c.expectQueuedMethod('/', 'testfile', false, function () {
-              expect(processor.emit).toHaveBeenCalledWith('syncstart', {data: {path: '/testfile', file: '/local/path/testfile', method: 'POST'}, context: jasmine.any(Object)});
-              expect(processor.emit).toHaveBeenCalledWith('syncprogress', {data: {path: '/testfile', file: '/local/path/testfile', read: jasmine.any(Number), total: jasmine.any(Number), rate: jasmine.any(Number), elapsed: jasmine.any(Number)}, context: jasmine.any(Object)});
-              expect(processor.emit).toHaveBeenCalledWith('syncend', {data: {path: '/testfile', file: '/local/path/testfile', method: 'POST'}, context: jasmine.any(Object)});
+              expectSyncEvent('syncfilestart', {path: '/testfile', method: 'POST'});
+              expectSyncEvent('syncfileprogress', {path: '/testfile', read: jasmine.any(Number), total: jasmine.any(Number), rate: jasmine.any(Number), elapsed: jasmine.any(Number)});
+              expectSyncEvent('syncfileend', {path: '/testfile', method: 'POST'});
               done();
             });
           });
@@ -171,8 +184,8 @@ describe('RQProcessor', function () {
               c.expectLocalFileExist('/testfile2', true, false, function () {
                 c.expectQueuedMethod('/', 'testfile', false, function () {
                   c.expectQueuedMethod('/', 'testfile2', false, function () {
-                    expect(processor.emit).toHaveBeenCalledWith('syncend', {data: {path: '/testfile', file: '/local/path/testfile', method: 'POST'}, context: jasmine.any(Object)});
-                    expect(processor.emit).toHaveBeenCalledWith('syncend', {data: {path: '/testfile2', file: '/local/path/testfile2', method: 'POST'}, context: jasmine.any(Object)});
+                    expectSyncEvent('syncfileend', {path: '/testfile', method: 'POST'});
+                    expectSyncEvent('syncfileend', {path: '/testfile2', method: 'POST'});
                     done();
                   });
                 });
@@ -192,9 +205,9 @@ describe('RQProcessor', function () {
             processor.sync(config, function (err) {
               expect(err).toBeFalsy();
               c.expectQueuedMethod('/', 'testfile', false, function () {
-                expect(processor.emit).toHaveBeenCalledWith('syncstart', {data: {path: '/testfile', file: '/local/path/testfile', method: 'PUT'}, context: jasmine.any(Object)});
-                expect(processor.emit).toHaveBeenCalledWith('syncprogress', {data: {path: '/testfile', file: '/local/path/testfile', read: jasmine.any(Number), total: jasmine.any(Number), rate: jasmine.any(Number), elapsed: jasmine.any(Number)}, context: jasmine.any(Object)});
-                expect(processor.emit).toHaveBeenCalledWith('syncend', {data: {path: '/testfile', file: '/local/path/testfile', method: 'PUT'}, context: jasmine.any(Object)});
+                expectSyncEvent('syncfilestart', {path: '/testfile', method: 'PUT'});
+                expectSyncEvent('syncfileprogress', {path: '/testfile', read: jasmine.any(Number), total: jasmine.any(Number), rate: jasmine.any(Number), elapsed: jasmine.any(Number)});
+                expectSyncEvent('syncfileend', {path: '/testfile', method: 'PUT'});
                 done();
               });
             });
@@ -210,9 +223,9 @@ describe('RQProcessor', function () {
           processor.sync(config, function (err) {
             expect(err).toBeFalsy();
             c.expectQueuedMethod('/', 'testfile', false, function () {
-              expect(processor.emit).toHaveBeenCalledWith('syncstart', {data: {path: '/testfile', file: '/local/path/testfile', method: 'DELETE'}, context: jasmine.any(Object)});
-              expect(processor.emit).not.toHaveBeenCalledWith('syncprogress', {data: {path: '/testfile', file: '/local/path/testfile', read: jasmine.any(Number), total: jasmine.any(Number), rate: jasmine.any(Number)}, context: jasmine.any(Object)});
-              expect(processor.emit).toHaveBeenCalledWith('syncend', {data: {path: '/testfile', file: '/local/path/testfile', method: 'DELETE'}, context: jasmine.any(Object)});
+              expectSyncEvent('syncfilestart', {path: '/testfile', method: 'DELETE'});
+              expectNotSyncEvent('syncfileprogress', {path: '/testfile', read: jasmine.any(Number), total: jasmine.any(Number), rate: jasmine.any(Number)});
+              expectSyncEvent('syncfileend', {path: '/testfile', method: 'DELETE'});
               done();
             });
           });
@@ -234,7 +247,7 @@ describe('RQProcessor', function () {
         processor.sync(config, function (err) {
           expect(err).toBeFalsy();
           c.expectQueuedMethod('/', 'testfile', 'PUT', function () {
-            expect(processor.emit).toHaveBeenCalledWith('syncerr', {data: {path: '/testfile', file: Path.join(c.localPrefix, '/testfile'), method: 'POST', err: jasmine.any(String)}, context: jasmine.any(Object)});
+            expectSyncEvent('syncfileerr', {path: '/testfile', method: 'POST', err: jasmine.any(String)});
             c.testTree.rq.queueRequest(c.testContext, {
               method: 'DELETE',
               path: '/testfile',
@@ -242,7 +255,7 @@ describe('RQProcessor', function () {
               remotePrefix: c.hostPrefix
             }, function (err) {
               expect(err).toBeFalsy();
-              expect(processor.emit).not.toHaveBeenCalledWith('syncabort', {path:any(String), file:any(String)});
+              expectNotSyncEvent('syncfileabort', {path:any(String)});
               done();
             });
           });
@@ -256,7 +269,7 @@ describe('RQProcessor', function () {
         processor.sync(config, function (err) {
           expect(err).toBeFalsy();
           c.expectQueuedMethod('/', 'testfile', false, function () {
-            expect(processor.emit).toHaveBeenCalledWith('syncerr', {data: {path: '/testfile', file: '/local/path/testfile', method: 'POST', err: jasmine.any(String)}, context: jasmine.any(Object)});
+            expectSyncEvent('syncfileerr', {path: '/testfile', method: 'POST', err: jasmine.any(String)});
             done();
           });
         });
@@ -294,7 +307,7 @@ describe('RQProcessor', function () {
         processor.sync(config, function (err) {
           expect(err).toBeFalsy();
           c.expectQueuedMethod('/', 'testfile', 'PUT', function () {
-            expect(processor.emit).toHaveBeenCalledWith('syncerr', {data: { path: '/testfile', file: Path.join(c.localPrefix, '/testfile'), method: 'POST', err: jasmine.any(String) }, context: jasmine.any(Object)});
+            expectSyncEvent('syncfileerr', { path: '/testfile', method: 'POST', err: jasmine.any(String) });
             done();
           });
         });
@@ -334,7 +347,7 @@ describe('RQProcessor', function () {
       c.addQueuedFile('/testfile', function () {
         processor.sync(config, function (err) {
           expect(err).toBeFalsy();
-          expect(c.getPathMethodRequestCount('/testfile', 'POST')).toEqual(1);
+          expect(c.getCreateAssetRequestCount('/')).toEqual(1);
           c.testTree.open('/testfile', function (err, file) {
             expect(err).toBeFalsy();
             file.cacheFile(function (err) {
@@ -352,7 +365,7 @@ describe('RQProcessor', function () {
         c.addFile(c.remoteTree, '/testduplicate.jpg', function () {
           processor.sync(config, function (err) {
             expect(err).toBeFalsy();
-            expect(c.getPathMethodRequestCount('/testduplicate.jpg', 'PUT')).toEqual(1);
+            expect(c.getCreateAssetRequestCount('/')).toEqual(1);
             c.expectLocalFileExist('/testduplicate.jpg', true, false, function () {
               c.remoteTree.exists('/testduplicate.jpg', function (err, exists) {
                 expect(err).toBeFalsy();
@@ -370,7 +383,7 @@ describe('RQProcessor', function () {
         c.remoteTree.delete('/testnoexist.jpg', function () {
           processor.sync(config, function (err) {
             expect(err).toBeFalsy();
-            expect(c.getPathMethodRequestCount('/testnoexist.jpg', 'POST')).toEqual(2);
+            expect(c.getCreateAssetRequestCount('/')).toEqual(1);
             c.expectLocalFileExist('/testnoexist.jpg', true, false, function () {
               c.remoteTree.exists('/testnoexist.jpg', function (err, exists) {
                 expect(err).toBeFalsy();
@@ -414,7 +427,7 @@ describe('RQProcessor', function () {
           localPrefix: RQCommon.getLocalPrefix()
         }, function (err) {
           expect(err).toBeFalsy();
-          expect(c.getPathMethodRequestCount('/testfilepath', 'POST')).toEqual(1);
+          expect(c.getCreateAssetRequestCount('/')).toEqual(1);
           c.expectLocalFileExist('/testfilepath', true, false, function () {
             c.expectQueuedMethod('/', 'testfilepath', false, done);
           });
@@ -423,14 +436,14 @@ describe('RQProcessor', function () {
     });
 
     it('testSyncPathNotQueued', function (done) {
-      c.addCachedFile('/notqueued.jpg', function () {
+      c.addCachedFileWithLength('/notqueued.jpg', 10, function () {
         processor.syncPath('/notqueued.jpg', {
           remotePrefix: RQCommon.getFullRemotePrefixWithPath(),
           localPrefix: RQCommon.getLocalPrefix()
         },
         function (err) {
           expect(err).toBeFalsy();
-          expect(c.getPathMethodRequestCount('/notqueued.jpg', 'PUT')).toEqual(1);
+          expect(c.getCreateAssetRequestCount('/')).toEqual(1);
           c.expectLocalFileExist('/notqueued.jpg', true, false, function () {
             c.expectQueuedMethod('/', 'notqueued.jpg', false, done);
           });
@@ -462,7 +475,7 @@ describe('RQProcessor', function () {
           isDelete: true
         }, function (err) {
           expect(err).toBeFalsy();
-          expect(c.getPathMethodRequestCount('/testqueued.jpg', 'POST')).toEqual(1);
+          expect(c.getCreateAssetRequestCount('/')).toEqual(1);
           c.expectLocalFileExist('/testqueued.jpg', true, false, function () {
             c.expectQueuedMethod('/', 'testqueued.jpg', false, done);
           });
@@ -482,10 +495,10 @@ describe('RQProcessor', function () {
               processor.start(config);
               setTimeout(function () {
                 processor.stop();
-                expect(processor.emit).toHaveBeenCalledWith('syncstart', {data: {path: '/testfile', file: '/local/path/testfile', method: 'POST'}, context: jasmine.any(Object)});
-                expect(processor.emit).toHaveBeenCalledWith('syncend', {data: {path: '/testfile', file: '/local/path/testfile', method: 'POST'}, context: jasmine.any(Object)});
-                expect(processor.emit).toHaveBeenCalledWith('syncstart', {data: {path: '/testdelete', file: '/local/path/testdelete', method: 'DELETE'}, context: jasmine.any(Object)});
-                expect(processor.emit).toHaveBeenCalledWith('syncend', {data: {path: '/testdelete', file: '/local/path/testdelete', method: 'DELETE'}, context: jasmine.any(Object)});
+                expectSyncEvent('syncfilestart', {path: '/testfile', method: 'POST'});
+                expectSyncEvent('syncfileend', {path: '/testfile', method: 'POST'});
+                expectSyncEvent('syncfilestart', {path: '/testdelete', method: 'DELETE'});
+                expectSyncEvent('syncfileend', {path: '/testdelete', method: 'DELETE'});
                 done();
               }, 1000);
             });
@@ -501,7 +514,7 @@ describe('RQProcessor', function () {
         setTimeout(function () {
           processor.stop();
           expect(processor.emit).toHaveBeenCalledWith('purged', any(Object));
-          expect(processor.emit).not.toHaveBeenCalledWith('syncstart', any(Object));
+          expectNotSyncEvent('syncfilestart', any(Object));
           done();
         }, 200);
       });
@@ -510,10 +523,12 @@ describe('RQProcessor', function () {
     it('testStartStopCancelRequest', function (done) {
       c.addQueuedFile('/testfile', function (file) {
         c.registerLocalPath('/testfile', function (filePath, fileData, fileCb) {
-          processor.stop();
-          fileCb(null, fileData);
-          expect(processor.emit).toHaveBeenCalledWith('syncabort', {path: '/testfile', file: '/local/path/testfile'});
-          done();
+          c.testShare.disconnect(function () {
+            processor.stop();
+            fileCb(null, fileData);
+            expectSyncEvent('syncfileabort', {path: '/testfile'});
+            done();
+          });
         });
         processor.start(config);
       });

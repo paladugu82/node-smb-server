@@ -59,13 +59,17 @@ describe('RQShare', function () {
       c.testShare.on('shareEvent', function (data) {
         if (data.event == 'syncfileend') {
           c.expectLocalFileExist('/testupload.jpg', true, false, function () {
-            c.expectQueuedMethod('/', 'testupload.jpg', false, function () {
-              c.remoteTree.exists('/testupload.jpg', function (err, exists) {
-                expect(err).toBeFalsy();
-                expect(exists).toBeTruthy();
-                done();
+            // there's a sync issue because the processor hasn't finished yet. give the processor time to finish
+            // so that the file won't be queued
+            setTimeout(function () {
+              c.expectQueuedMethod('/', 'testupload.jpg', false, function () {
+                c.remoteTree.exists('/testupload.jpg', function (err, exists) {
+                  expect(err).toBeFalsy();
+                  expect(exists).toBeTruthy();
+                  done();
+                });
               });
-            });
+            }, 100);
           });
         }
       });

@@ -101,7 +101,6 @@ only be sent a maximum of once every 30 seconds.
   * (Object) _data_: Data for the event.
     * (String) _path_: The downloading file's path.
     * (String) _serverPath_: Full path to the file in the remote JCR. This is typically the file's full URL.
-    * (String) _file_: Full path of where the file is being downloaded to the local file system.
     * (Number) _read_: Number of bytes that have been downloaded so far. 
     * (Number) _total_: Total number of bytes to download. **Note:** A value of 0 indicates that the total file size is
     unknown.
@@ -110,3 +109,32 @@ only be sent a maximum of once every 30 seconds.
 * _downloadend_: The backend has finished downloading a file from the JCR.
   * (Object) _data_: Data for the event.
     * (String) _path_: The downloading file's path.
+* _downloadabort_: Download of a file from JCR share was cancelled prematurely.
+  * (Object) _data_: Data for the event.
+    * (String) _path_: Server path to the file being downloaded.
+* _syncfilestart_: Emitted when the backend begins uploading a file to JCR.
+  * (Object) _data_: Data for the event.
+    * (String) _path_: Server path to the file being uploaded.
+    * (String) _file_: Full path to the local file being uploaded.
+    * (String )_method_: The HTTP method being used to upload the file.
+* _syncfileend_: Sent when the backend finishes uploading a file to JCR.
+  * (Object) _data_: Data for the event.
+    * (String) _path_: Server path to the uploaded file.
+    * (String) _method_: The HTTP method used to upload the file.
+* _syncfileerr_: Alerts that there was an error while attempting to upload a file from the local share to the remote 
+share.
+  * (Object) _data_: Data for the event.
+    * (String) _path_: Server path to the file being uploaded.
+    * (String )_method_: The HTTP method being used to upload the file.
+* _syncfileabort_: Transfer of a file to JCR share was cancelled prematurely.
+  * (Object) _data_: Data for the event.
+    * (String) _path_: Server path to the file being uploaded.
+* _syncfileprogress_: Sent on a regular interval (approximately once every second) while a file is uploading.
+  * (Object) _data_: Data for the event.
+    * (String) _path_: The uploading file's path.
+    * (String) _serverPath_: Full path to the file in the remote JCR. This is typically the file's full URL.
+    * (Number) _read_: Number of bytes that have been uploaded so far. 
+    * (Number) _total_: Total number of bytes to upload. **Note:** A value of 0 indicates that the total file size is
+    unknown.
+    * (Number) _rate_: The rate at which the file is uploading, in bytes per second.
+    * (Number) _elapsed_: The amount of time that has elapsed since the upload started, in milliseconds.

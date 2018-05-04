@@ -28,4 +28,8 @@ TestTmp.prototype.createWriteStream = function (options) {
   return this.fs.createWriteStream('/some/temp/file/' + now);
 };
 
+TestTmp.prototype.cleanup = function (cb) {
+  cb();
+};
+
 module.exports = TestTmp;

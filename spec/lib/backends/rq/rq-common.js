@@ -115,24 +115,40 @@ function RQCommon(config) {
   self.request.setRequestCallback(function (url, method, headers, options, cb) {
     var path = stripUrlPrefix(url);
     if (method == 'POST') {
+      var substrIndex = path.indexOf('.createasset.html')
+      var form = options['form'];
+      if(substrIndex >= 0) {
+        var parentUrl = path.substring(0, substrIndex);
+        var fileUrl = parentUrl + RQCommon.removeLocalPrefix(form.file.path);
+        path = RQCommon.removeRemotePrefix(RQCommon.removeFullRemoteContextPrefix(fileUrl));
+        url = self.urlPrefix + path;
+        self.request.setUrlData(url, '');
+      }
+      
       var jsonUrl = url + self.jsonSelector;
       var jsonUrlShort = url + '.json';
-      var name = utils.getPathName(path);
-      var entityData;
-      if (headers['Content-Type'] == 'application/json; charset=utf-8') {
-        entityData = MockRepo.getFolderData(name);
-      } else {
-        entityData = MockRepo.getFileData(name, options.data.length);
-      }
-      self.mockRepo.addEntity(path, entityData, function () {
-        self.request.registerUrl(jsonUrl, function (url, headers, jsonCallback) {
-          getEntityJson(path, true, jsonCallback);
-        });
-        self.request.registerUrl(jsonUrlShort, function (url, headers, jsonCallback) {
-          getEntityJson(path, false, jsonCallback);
-        });
-        cb();
-      });
+     
+    	if( form && form ['replaceAsset']) {
+    		self.mockRepo.setSize(path, form['file@Length'], cb);
+    	} else {
+	      var name = utils.getPathName(path);
+				var entityData;
+			
+				if (headers['Content-Type'] == 'application/json; charset=utf-8') {
+					entityData = MockRepo.getFolderData(name);
+				} else {
+					entityData = MockRepo.getFileData(name, options.data.length);
+				}
+				self.mockRepo.addEntity(path, entityData, function () {
+					self.request.registerUrl(jsonUrl, function (url, headers, jsonCallback) {
+						getEntityJson(path, true, jsonCallback);
+					});
+					self.request.registerUrl(jsonUrlShort, function (url, headers, jsonCallback) {
+						getEntityJson(path, false, jsonCallback);
+					});
+					cb();
+				});
+			}
     } else if (method == 'PUT') {
       self.mockRepo.setSize(path, options.data.length, cb);
     } else if (method == 'DELETE') {
@@ -174,12 +190,48 @@ RQCommon.getLocalPrefix = function () {
   return '/local/path';
 };
 
+RQCommon.removeLocalPrefix = function (path) {
+  return RQCommon.removePathPrefix(path, RQCommon.getLocalPrefix() + '/');
+};
+
+RQCommon.removeRemotePrefix = function (path) {
+  return RQCommon.removePathPrefix(path, RQCommon.getRemotePrefix() + '/');
+};
+
+RQCommon.removeFullRemoteContextPrefix = function (path) {
+  return RQCommon.removePathPrefix(path, RQCommon.getFullRemoteContentPrefix() + '/');
+};
+
+RQCommon.removePathPrefix = function (path, prefix) {
+  var value = path;
+  if (path.length > prefix.length) {
+    if (path.substr(0, prefix.length) == prefix) {
+      value = path.substr(prefix.length);
+    }
+  } else if (path == prefix) {
+    value = '/';
+  }
+
+  if (value.length == 0) {
+    value = '/';
+  } else if (value.charAt(0) != '/') {
+    value = '/' + value;
+  } else if (value != '/' && value.charAt(value.length - 1) == '/') {
+    value = value.substring(0, value.length - 1);
+  }
+
+  return value;
+};
+
 RQCommon.getHostRemotePrefix = function () {
   return 'http://' + RQCommon.getHost() + ':' + RQCommon.getPort();
 };
 
 RQCommon.getFullRemotePrefix = function () {
   return 'http://' + RQCommon.getHost() + ':' + RQCommon.getPort() + '/api/assets';
+};
+RQCommon.getFullRemoteContentPrefix = function () {
+  return 'http://' + RQCommon.getHost() + ':' + RQCommon.getPort() + '/content/dam';
 };
 
 RQCommon.getFullRemotePrefixWithPath = function () {
@@ -224,6 +276,14 @@ RQCommon.prototype.getPathMethodRequestCount = function (path, method) {
   return this.request.getUrlMethodRequestCount(testPath, method);
 };
 
+RQCommon.prototype.getCreateAssetRequestCount = function (parentPath) {
+  if (parentPath == '/') {
+    parentPath = '';
+  }
+  var testUrl = RQCommon.getFullRemoteContentPrefix() + this.remotePrefix + parentPath + '.createasset.html';
+  return this.request.getUrlMethodRequestCount(testUrl, 'POST');
+};
+
 RQCommon.prototype.registerLocalPath = function (path, cb) {
   this.fs.registerPath(this.localPrefix + path, cb);
 };
@@ -249,6 +309,8 @@ RQCommon.prototype.registerInfoUrl = function (path, cb) {
 
 RQCommon.prototype.registerPathStatusCode = function (path, statusCode) {
   this.request.registerUrlStatusCode(this.urlPrefix + this.remotePrefix + path, statusCode);
+  var url = RQCommon.getFullRemoteContentPrefix() + this.remotePrefix + '.createasset.html' ;
+  this.request.registerUrlStatusCode(url, statusCode);
 };
 
 RQCommon.prototype.setRemoteFileReadOnly = function (path, readOnly, cb) {
@@ -325,6 +387,27 @@ RQCommon.prototype.addFile = function (tree, fileName, cb) {
   });
 };
 
+RQCommon.prototype.forceAddRemoteFile = function (fileName, cb) {
+  var self = this;
+  var url = this.urlPrefix + this.remotePrefix + fileName;
+  var req = this.request.request({
+    url: url,
+    method: 'POST',
+    headers: {
+      'Content-Type': utils.lookupMimeType(fileName)
+    }
+  }, function (err, res) {
+    expect(err).toBeFalsy();
+    expect(res.statusCode).toEqual(201);
+    self.remoteTree.open(fileName, function (err, file) {
+      expect(err).toBeFalsy();
+      expect(file).toBeTruthy();
+      cb(file);
+    });
+  });
+  req.end('forced');
+};
+
 RQCommon.prototype.addRemoteFileWithDates = function (path, content, created, lastModified, cb) {
   var self = this;
   this.addFile(this.remoteTree, path, function () {
@@ -398,6 +481,14 @@ RQCommon.prototype.addLocalFiles = function (numFiles, cb) {
 
 RQCommon.prototype.addLocalFileWithDates = function (path, readOnly, content, created, lastModified, cb) {
   this.addFileWithDates(this.localRawTree, path, content, created, lastModified, cb);
+};
+
+RQCommon.prototype.expectShareEvent = function (eventName, eventData) {
+  expect(this.testShare.emit).toHaveBeenCalledWith('shareEvent', {event: eventName, data: eventData});
+};
+
+RQCommon.prototype.expectNotShareEvent = function (eventName, eventData) {
+  expect(this.testShare.emit).not.toHaveBeenCalledWith('shareEvent', {event: eventName, data: eventData});
 };
 
 RQCommon.prototype.expectLocalFileExistExt = function (fileName, localExists, workExists, createExists, cb) {
@@ -493,6 +584,24 @@ RQCommon.prototype.addCachedFile = function (path, cb) {
         file.close(function (err) {
           expect(err).toBeFalsy();
           cb();
+        });
+      });
+    });
+  });
+};
+
+RQCommon.prototype.addCachedFileWithLength = function (path, length, cb) {
+  var c = this;
+  c.addFile(c.remoteTree, path, function () {
+    c.testTree.open(path, function (err, file) {
+      file.setLength(length, function (err) {
+        expect(err).toBeFalsy();
+        file.cacheFile(function (err) {
+          expect(err).toBeFalsy();
+          file.close(function (err) {
+            expect(err).toBeFalsy();
+            cb();
+          });
         });
       });
     });
