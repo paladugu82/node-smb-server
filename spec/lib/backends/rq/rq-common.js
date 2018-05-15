@@ -35,6 +35,8 @@ function RQCommon(config) {
   self.remotePrefix = RQCommon.getRemotePrefix();
   self.localPrefix = RQCommon.getLocalPrefix();
 
+  self.fs.mkdirpSync(RQCommon.getLocalPrefix());
+
   self.config = config;
   if (!self.config) {
     self.config = {
@@ -45,11 +47,13 @@ function RQCommon(config) {
       local: {
         backend: 'localfs',
         description: 'test local share',
-        path: self.localPrefix
+        path: self.localPrefix,
+        unicodeNormalizeForm: 'nfkc'
       },
       work: {
         backend: 'workfs',
-        path: '/work/path'
+        path: '/work/path',
+        unicodeNormalizeForm: 'nfkc'
       },
       contentCacheTTL: 200,
       preserveCacheFiles: [
@@ -58,6 +62,7 @@ function RQCommon(config) {
       host: host,
       port: port,
       noprocessor: true,
+      unicodeNormalizeForm: 'nfkc',
       options: {
         headers: {
           'user-agent': 'unit test framework'
@@ -99,60 +104,76 @@ function RQCommon(config) {
   }
 
   function stripUrlPrefix(url) {
-    var toStrip = self.urlPrefix + self.remotePrefix;
-    if (url.indexOf(toStrip) >= 0) {
-      url = url.substr(toStrip.length);
-    }
+    url = RQCommon.removePrefix(url, self.hostPrefix);
+    url = RQCommon.removePrefix(url, '/content/dam');
+    url = RQCommon.removePrefix(url, '/api/assets');
+    url = RQCommon.removePrefix(url, self.remotePrefix);
     return url;
   }
 
   self.jsonSelector = '.json?limit=9999&showProperty=jcr:created&showProperty=jcr:lastModified&showProperty=asset:size&showProperty=asset:readonly&showProperty=cq:drivelock';
   var rootJsonUrl = 'http://' + self.config.host + ':' + self.config.port + '/api/assets' + self.config.path + self.jsonSelector;
-  self.request.registerUrl(rootJsonUrl, function (url, headers, cb) {
+  self.request.registerUrl(rootJsonUrl, function (options, cb) {
     getEntityJson('/', true, cb);
   });
 
-  self.request.setRequestCallback(function (url, method, headers, options, cb) {
-    var path = stripUrlPrefix(url);
-    if (method == 'POST') {
-      var substrIndex = path.indexOf('.createasset.html')
-      var form = options['form'];
-      if(substrIndex >= 0) {
+  self.request.setRequestCallback(function (options, cb) {
+    var invokeCallback = function () {
+      // pass potentially modified options back to test request
+      cb(options);
+    };
+    var path = stripUrlPrefix(options.url);
+    var form = options.form;
+    if (options.method == 'POST') {
+      var substrIndex = path.indexOf('.createasset.html');
+      if (substrIndex >= 0) {
+        // if targeting createasset.html, change options to match assets api
         var parentUrl = path.substring(0, substrIndex);
         var fileUrl = parentUrl + RQCommon.removeLocalPrefix(form.file.path);
-        path = RQCommon.removeRemotePrefix(RQCommon.removeFullRemoteContextPrefix(fileUrl));
-        url = self.urlPrefix + path;
-        self.request.setUrlData(url, '');
+        path = RQCommon.removeRemotePrefix(RQCommon.removeFullRemoteContentPrefix(fileUrl));
+        options.url = RQCommon.getFullRemotePrefixWithPath() + path;
+        if (form.replaceAsset) {
+          // both creating and updating through createasset use POST. if updating, change method to PUT
+          options.method = 'PUT';
+        }
       }
-      
+
+      substrIndex = path.indexOf('/bin/wcmcommand');
+      if (substrIndex >= 0) {
+        // deletes go through wcmcommand, so change options to match assets api
+        path = RQCommon.removeRemotePrefix(RQCommon.removePathPrefix(form.path, '/content/dam'));
+        options.url = RQCommon.getFullRemotePrefixWithPath() + path;
+        options.method = 'DELETE';
+      }
+    }
+    var url = options.url;
+    var method = options.method;
+    var headers = options.headers;
+    if (method == 'POST') {
       var jsonUrl = url + self.jsonSelector;
       var jsonUrlShort = url + '.json';
      
-    	if( form && form ['replaceAsset']) {
-    		self.mockRepo.setSize(path, form['file@Length'], cb);
-    	} else {
-	      var name = utils.getPathName(path);
-				var entityData;
-			
-				if (headers['Content-Type'] == 'application/json; charset=utf-8') {
-					entityData = MockRepo.getFolderData(name);
-				} else {
-					entityData = MockRepo.getFileData(name, options.data.length);
-				}
-				self.mockRepo.addEntity(path, entityData, function () {
-					self.request.registerUrl(jsonUrl, function (url, headers, jsonCallback) {
-						getEntityJson(path, true, jsonCallback);
-					});
-					self.request.registerUrl(jsonUrlShort, function (url, headers, jsonCallback) {
-						getEntityJson(path, false, jsonCallback);
-					});
-					cb();
-				});
-			}
+      var name = utils.getPathName(path);
+      var entityData;
+
+      if (headers['Content-Type'] == 'application/json; charset=utf-8') {
+        entityData = MockRepo.getFolderData(name);
+      } else {
+        entityData = MockRepo.getFileData(name, options.data.length);
+      }
+      self.mockRepo.addEntity(path, entityData, function () {
+        self.request.registerUrl(jsonUrl, function (options, jsonCallback) {
+          getEntityJson(path, true, jsonCallback);
+        });
+        self.request.registerUrl(jsonUrlShort, function (options, jsonCallback) {
+          getEntityJson(path, false, jsonCallback);
+        });
+        invokeCallback();
+      });
     } else if (method == 'PUT') {
-      self.mockRepo.setSize(path, options.data.length, cb);
+      self.mockRepo.setSize(path, options.data.length, invokeCallback);
     } else if (method == 'DELETE') {
-      self.mockRepo.delete(path, cb);
+      self.mockRepo.delete(path, invokeCallback);
     } else if (method == 'MOVE') {
       var targetUrl = headers['X-Destination'];
       var targetPath = stripUrlPrefix(targetUrl);
@@ -161,16 +182,16 @@ function RQCommon(config) {
       self.mockRepo.move(path, targetPath, function () {
         self.request.unregisterUrl(jsonUrl);
         self.request.unregisterUrl(jsonUrlShort);
-        self.request.registerUrl(targetJsonUrl, function (url, headers, jsonCallback) {
+        self.request.registerUrl(targetJsonUrl, function (options, jsonCallback) {
           getEntityJson(targetPath, true, jsonCallback);
         });
-        self.request.registerUrl(targetJsonUrlShort, function (url, headers, jsonCallback) {
+        self.request.registerUrl(targetJsonUrlShort, function (options, jsonCallback) {
           getEntityJson(targetPath, false, jsonCallback);
         });
-        cb();
+        invokeCallback();
       });
     } else {
-      cb();
+      invokeCallback();
     }
   });
 
@@ -198,19 +219,23 @@ RQCommon.removeRemotePrefix = function (path) {
   return RQCommon.removePathPrefix(path, RQCommon.getRemotePrefix() + '/');
 };
 
-RQCommon.removeFullRemoteContextPrefix = function (path) {
+RQCommon.removeFullRemoteContentPrefix = function (path) {
   return RQCommon.removePathPrefix(path, RQCommon.getFullRemoteContentPrefix() + '/');
 };
 
-RQCommon.removePathPrefix = function (path, prefix) {
-  var value = path;
-  if (path.length > prefix.length) {
-    if (path.substr(0, prefix.length) == prefix) {
-      value = path.substr(prefix.length);
+RQCommon.removePrefix = function (value, prefix) {
+  if (value.length > prefix.length) {
+    if (value.substr(0, prefix.length) == prefix) {
+      return value.substr(prefix.length);
     }
-  } else if (path == prefix) {
-    value = '/';
+  } else if (value == prefix) {
+    return '';
   }
+  return value;
+};
+
+RQCommon.removePathPrefix = function (path, prefix) {
+  var value = RQCommon.removePrefix(path, prefix);
 
   if (value.length == 0) {
     value = '/';
@@ -282,6 +307,10 @@ RQCommon.prototype.getCreateAssetRequestCount = function (parentPath) {
   }
   var testUrl = RQCommon.getFullRemoteContentPrefix() + this.remotePrefix + parentPath + '.createasset.html';
   return this.request.getUrlMethodRequestCount(testUrl, 'POST');
+};
+
+RQCommon.prototype.getDeleteRequestCount = function () {
+  return this.request.getUrlMethodRequestCount(RQCommon.getHostRemotePrefix() + '/bin/wcmcommand', 'POST');
 };
 
 RQCommon.prototype.registerLocalPath = function (path, cb) {

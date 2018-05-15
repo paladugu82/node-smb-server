@@ -6,8 +6,9 @@
     "test": "./node_modules/.bin/jasmine-node --captureExceptions ."
   },
   "dependencies": {
-    "jasmine-node": "^1.14.5",
     "deasync": "^0.1.10",
+    "jasmine-node": "^1.14.5",
+    "lokijs": "^1.5.3",
     "proxyquire": "^1.8.0"
   },
   "engines": {

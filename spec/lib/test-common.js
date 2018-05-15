@@ -77,7 +77,6 @@ function TestCommon() {
     firstLoad = false;
     spyOn(globalfs, 'createReadStream').andCallThrough();
     spyOn(globalfs, 'createWriteStream').andCallThrough();
-    spyOn(globalfs, 'writeFileSync').andCallThrough();
     spyOn(globalfs, 'unlinkSync').andCallThrough();
     spyOn(globalfs, 'statSync').andCallThrough();
   }

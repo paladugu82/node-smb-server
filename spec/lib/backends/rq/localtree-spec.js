@@ -68,9 +68,10 @@ describe('LocalTreeTests', function () {
     it('testListIsDownloading', function (done) {
       var fileName = '/downloading.jpg';
       var called = false;
-      c.addFile(c.remoteTree, '/downloading.jpg', function () {
-        c.registerUrl(fileName, function (url, headers, cb) {
-          c.localTree.list('/', function (err, files) {
+      c.addFile(c.remoteTree, fileName, function () {
+        c.registerUrl(fileName, function (options, cb) {
+          c.localTree.list('/*', function (err, files) {
+            expect(called).toBeFalsy();
             called = true;
             expect(err).toBeFalsy();
             expect(files.length).toEqual(0);
@@ -85,7 +86,11 @@ describe('LocalTreeTests', function () {
             expect(err).toBeFalsy();
             expect(actual).toEqual(file.size());
             expect(called).toBeTruthy();
-            done();
+            c.localTree.list('/*', function (err, files) {
+              expect(files.length).toEqual(1);
+              expect(files[0].getPath()).toEqual('/downloading.jpg');
+              done();
+            });
           });
         });
       });
@@ -349,8 +354,7 @@ describe('LocalTreeTests', function () {
         expect(err).toBeFalsy();
         expect(files.length).toEqual(0);
         c.localTree.list('/test/*', function (err, files) {
-          expect(err).toBeFalsy();
-          expect(files.length).toEqual(0);
+          expect(err).toBeTruthy();
           c.localTree.list('/test', function (err, files) {
             expect(err).toBeFalsy();
             expect(files.length).toEqual(0);

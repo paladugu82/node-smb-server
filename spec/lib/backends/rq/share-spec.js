@@ -58,10 +58,10 @@ describe('RQShare', function () {
     c.addQueuedFile('/testupload.jpg', function () {
       c.testShare.on('shareEvent', function (data) {
         if (data.event == 'syncfileend') {
-          c.expectLocalFileExist('/testupload.jpg', true, false, function () {
             // there's a sync issue because the processor hasn't finished yet. give the processor time to finish
             // so that the file won't be queued
-            setTimeout(function () {
+          setTimeout(function () {
+            c.expectLocalFileExist('/testupload.jpg', true, false, function () {
               c.expectQueuedMethod('/', 'testupload.jpg', false, function () {
                 c.remoteTree.exists('/testupload.jpg', function (err, exists) {
                   expect(err).toBeFalsy();
@@ -69,8 +69,8 @@ describe('RQShare', function () {
                   done();
                 });
               });
-            }, 100);
-          });
+            });
+          }, 100);
         }
       });
       c.testShare.onServerEvent(c.testContext, 'uploadasset', {path: '/testupload.jpg'});
@@ -100,7 +100,7 @@ describe('RQShare', function () {
 
   it('testNetworkLoss', function (done) {
     c.addFile(c.remoteTree, '/networkloss.jpg', function () {
-      c.registerUrl('/networkloss.jpg', function (url, headers, cb) {
+      c.registerUrl('/networkloss.jpg', function (options, cb) {
         cb('there was an error!');
       });
       c.testShare.on('shareEvent', function (data) {
@@ -114,7 +114,7 @@ describe('RQShare', function () {
 
   it('testNetworkLoss500', function (done) {
     c.addFile(c.remoteTree, '/networkloss500.jpg', function () {
-      c.registerUrl('/networkloss500.jpg', function (url, headers, cb) {
+      c.registerUrl('/networkloss500.jpg', function (options, cb) {
         cb(null, 500);
       });
       c.testShare.on('shareEvent', function (data) {
@@ -132,7 +132,7 @@ describe('RQShare', function () {
   it('testNetworkLoss501', function (done) {
     var loss = false;
     c.addFile(c.remoteTree, '/networkloss501.jpg', function () {
-      c.registerUrl('/networkloss501.jpg', function (url, headers, cb) {
+      c.registerUrl('/networkloss501.jpg', function (options, cb) {
         cb(null, 501);
       });
       c.testShare.on('shareEvent', function (data) {
@@ -151,7 +151,7 @@ describe('RQShare', function () {
   it('testNetworkRestored', function (done) {
     var eventCalls = {};
     c.addFile(c.remoteTree, '/networkrestored.jpg', function () {
-      c.registerUrl('/networkrestored.jpg', function (url, header, cb) {
+      c.registerUrl('/networkrestored.jpg', function (options, cb) {
         // lose the network only on the first run
         c.unregisterUrl('/networkrestored.jpg');
         cb('network lost!');
@@ -200,14 +200,14 @@ describe('RQShare', function () {
   describe('CustomHeaderTests', function () {
     it('testCustomConfigHeaders', function (done) {
       var statusCode = 201;
-      c.registerUrl('/testconfig.jpg', function (url, headers, cb) {
+      c.registerUrl('/testconfig.jpg', function (options, cb) {
         var currCode = statusCode;
         statusCode = 200;
-        expect(headers['user-agent']).toBeTruthy();
+        expect(options.headers['user-agent']).toBeTruthy();
         if (currCode == 200) {
-          expect(headers['x-smbserver-action']).toEqual('downloadfile');
+          expect(options.headers['x-smbserver-action']).toEqual('downloadfile');
         } else {
-          expect(headers['x-smbserver-action']).toEqual('createfile');
+          expect(options.headers['x-smbserver-action']).toEqual('createfile');
         }
         cb(null, currCode, 'testconfig');
       });

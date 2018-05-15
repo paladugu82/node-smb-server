@@ -80,7 +80,7 @@ describe('RQTreeConnection', function () {
       done();
     };
 
-    c.request.registerUrl(RQCommon.getHostRemotePrefix() + '/content/dam/testindesign.indd/jcr:content/metadata/xmpMM:Ingredients.1.json', function (url, headers, cb) {
+    c.request.registerUrl(RQCommon.getHostRemotePrefix() + '/content/dam/testindesign.indd/jcr:content/metadata/xmpMM:Ingredients.1.json', function (options, cb) {
       cb(null, 200, '{"jcr:primaryType":"nt:unstructured","xmpNodeType":"xmpArray","xmpArraySize":2,"xmpArrayType":"rdf:Bag","1":{"jcr:primaryType":"nt:unstructured","stRef:filePath":"file:///Volumes/DAM/we-retail/en/activities/biking/cycling_1.jpg","stRef:instanceID":"xmp.iid:a2b73b7d-7b74-4c04-97e4-d219a148eead","stRef:maskMarkers":"None","stRef:toPart":"/","stRef:placedResolutionUnit":"Inches","stRef:linkCategory":"Content","stRef:linkForm":"ReferenceStream","xmpNodeType":"xmpStruct","stRef:placedYResolution":"300.00","stRef:documentID":"xmp.did:a2b73b7d-7b74-4c04-97e4-d219a148eead","stRef:fromPart":"/","stRef:placedXResolution":"300.00"},"2":{"jcr:primaryType":"nt:unstructured","stRef:filePath":"file:///Volumes/DAM/we-retail/en/activities/biking/cycling_2.jpg","stRef:instanceID":"xmp.iid:f13e7a82-e18b-48fd-bc67-e08bc04e22a3","stRef:maskMarkers":"None","stRef:toPart":"/","stRef:placedResolutionUnit":"Inches","stRef:linkCategory":"Content","stRef:linkForm":"ReferenceStream","xmpNodeType":"xmpStruct","stRef:placedYResolution":"300.00","stRef:documentID":"xmp.did:f13e7a82-e18b-48fd-bc67-e08bc04e22a3","stRef:fromPart":"/","stRef:placedXResolution":"300.00"}}');
     });
 

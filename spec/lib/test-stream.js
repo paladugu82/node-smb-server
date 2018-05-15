@@ -18,6 +18,7 @@ function TestStream(target) {
 
   this.path = target;
   this.written = '';
+  this.ended = false;
 }
 
 util.inherits(TestStream, EventEmitter);
@@ -38,38 +39,101 @@ TestStream.prototype.setReadStream = function (readCb) {
 };
 
 TestStream.prototype.write = function (chunk, encoding, cb) {
-  this.written += chunk;
-  if (cb) {
-    cb();
+  if (chunk instanceof Buffer) {
+    chunk = chunk.toString();
   }
+  if (chunk) {
+    this.written += chunk;
+  }
+  process.nextTick(function () {
+    if (cb) {
+      cb();
+    }
+  });
 };
 
 TestStream.prototype.end = function (data, encoding, cb) {
-  if (data) {
-    this.written += data;
+  var self = this;
+  this.streaming = true;
+  this.doEnd(data, encoding, function (err) {
+    if (err) {
+      self.emit('error', err);
+      return;
+    }
+    self.emit('finish');
+  });
+};
+
+TestStream.prototype.doEnd = function (data, encoding, cb) {
+  var self = this;
+  if (this.ended) {
+    throw new Error('stream has already ended');
   }
-  this.emit('finish');
-  if (cb) {
-    cb();
-  }
+  this.ended = true;
+  process.nextTick(function () {
+    self.write(data, encoding, function (err) {
+      if (err) {
+        self.emit('error', err);
+      } else {
+        self.emit('end');
+      }
+      if (cb) {
+        cb();
+      }
+    });
+  });
 };
 
 TestStream.prototype.pipe = function (other) {
+  this.streaming = true;
+  other.streaming = true;
+
+  this.doPipe(other);
+};
+
+TestStream.prototype.doPipe = function (other) {
   var self = this;
-
-  function _emitEnd(data) {
-    self.end();
-    other.end(data, 'utf8');
+  function doEnd(callback) {
+    if (!self.ended) {
+      self.doEnd(null, null, callback);
+    } else {
+      callback();
+    }
   }
+  self.readAll(function (err, data) {
+    if (!err) {
+      doEnd(function (err) {
+        if (!err) {
+          other.endPipe(data, 'utf8');
+        } else {
+          other.emit('error', err);
+        }
+      });
+    } else {
+      self.emit('error', err);
+    }
+  });
+};
 
-  if (this.readCb) {
-    this.readCb(function (err, data) {
-      if (err) {
-        self.emitError(err);
-      } else {
-        self.emit('data', data);
-        _emitEnd(data);
-      }
+TestStream.prototype.endPipe = function (data, encoding, cb) {
+  this.end(data, encoding, cb);
+};
+
+TestStream.prototype.readAll = function (cb) {
+  var self = this;
+  if (self.readCb) {
+    self.readCb(function (err, data) {
+      process.nextTick(function () {
+        if (err) {
+          self.emitError(err);
+          cb(err);
+        } else {
+          if (data) {
+            self.emit('data', data);
+          }
+          cb(null, data);
+        }
+      });
     });
   } else {
     throw 'Test stream is not a read stream';

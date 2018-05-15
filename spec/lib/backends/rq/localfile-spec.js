@@ -220,7 +220,7 @@ describe('LocalFileTest', function () {
         expect(file.lastModified()).toEqual(54321);
         expect(file.lastChanged()).toEqual(54321);
         expect(file.created()).toEqual(12346);
-        expect(file.lastAccessed()).toEqual(local.lastChanged());
+        expect(file.lastAccessed()).toEqual(local.lastAccessed());
         done();
       });
     });

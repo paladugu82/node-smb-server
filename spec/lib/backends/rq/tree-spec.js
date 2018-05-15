@@ -802,7 +802,7 @@ describe('RQTree', function () {
   });
 
   it('testCreateDirectoryError', function (done) {
-    c.registerUrl('/test', function (url, headers, cb) {
+    c.registerUrl('/test', function (options, cb) {
       cb(null, 404);
     });
     c.testTree.createDirectory('/test', function (err) {
@@ -1222,7 +1222,7 @@ describe('RQTree', function () {
       // whose length is incorrect
       var secondCalled = false;
       c.addFileWithContent(c.remoteTree, '/somefile', '/somefile', function () {
-        c.registerUrl('/somefile', function (url, headers, callback) {
+        c.registerUrl('/somefile', function (options, callback) {
           setTimeout(function () {
             callback(null, 200, '/somefile');
           }, 500);
@@ -1259,27 +1259,29 @@ describe('RQTree', function () {
       });
     });
 
-    // FLAKY. This is a flaky test. it seems to work fine when run on its own, but will sometimes fail when run
-    // with all the other tests
     it('testMultipleDownloadFile', function (done) {
       // this test verifies the case where multiple "threads" attempt to download the same file
 
       var threadCount = 0;
-      function verifyDone() {
+      function verifyDone(test) {
         threadCount++;
         // not sure which order the threads will complete. Both will call this method
-        if (threadCount == 2) {
+        if (test) {
           c.testTree.open('/multiplefile', function (err, verifyFile) {
             expect(err).toBeFalsy();
             expect(verifyFile.size()).toEqual(100);
-            done();
+            if (threadCount == 2) {
+              done();
+            }
           });
+        } else if (threadCount == 2) {
+          done();
         }
       }
 
       var downloadDone = false;
       c.addFileWithContent(c.remoteTree, '/multiplefile', '/multiplefile', function () {
-        c.registerUrl('/multiplefile', function (url, headers, callback) {
+        c.registerUrl('/multiplefile', function (options, callback) {
           setTimeout(function () {
             downloadDone = true;
             callback(null, 200, '/multiplefile');
@@ -1304,7 +1306,7 @@ describe('RQTree', function () {
             file.close(function (err) {
               expect(err).toBeFalsy();
               c.expectLocalFileExist('/multiplefile', true, false, function () {
-                verifyDone();
+                verifyDone(true);
               });
             });
           });
@@ -1319,7 +1321,7 @@ describe('RQTree', function () {
       var now = new Date().getTime();
       var tree2 = c.testTreeConnection.createTree(c.createContext('ReadMultipleTree'));
       c.addRemoteFileWithDates(fileName, 'multiple read content', now, now, function () {
-        c.registerUrl(fileName, function (url, headers, cb) {
+        c.registerUrl(fileName, function (options, cb) {
           setTimeout(function () {
             cb(null, 200);
           }, 500);
@@ -1351,7 +1353,7 @@ describe('RQTree', function () {
       var now = new Date().getTime();
       var tree2 = c.testTreeConnection.createTree(c.createContext('RecacheMultipleTree'));
       c.addRemoteFileWithDates(fileName, 'recache multiple times', now, now, function () {
-        c.registerUrl(fileName, function (url, headers, cb) {
+        c.registerUrl(fileName, function (options, cb) {
           setTimeout(function () {
             cb(null, 200);
           }, 500);
@@ -1391,7 +1393,7 @@ describe('RQTree', function () {
       var tree2 = c.testTreeConnection.createTree(c.createContext('ReadMultipleError1'));
       var tree3 = c.testTreeConnection.createTree(c.createContext('ReadMultipleError2'));
       c.addRemoteFileWithDates(fileName, 'error', now, now, function () {
-        c.registerUrl(fileName, function (url, headers, cb) {
+        c.registerUrl(fileName, function (options, cb) {
           setTimeout(function () {
             if (first) {
               first = false;
@@ -1720,7 +1722,6 @@ describe('RQTree', function () {
       });
     });
 
-    // FLAKY. This is a flaky test. sometimes the expectLocalFileExist call fails
     it('testRenameDirectory', function (done) {
       c.localRawTree.createDirectory('/test', function (err) {
         expect(err).toBeFalsy();
@@ -1771,9 +1772,11 @@ describe('RQTree', function () {
     });
 
     it('testDeleteDirectory', function (done) {
-      c.localTree.deleteDirectory('/test', function (err) {
-        expect(err).toBeFalsy();
-        done();
+      c.addDirectory(c.localTree, '/test', function () {
+        c.localTree.deleteDirectory('/test', function (err) {
+          expect(err).toBeFalsy();
+          done();
+        });
       });
     });
 
@@ -1885,7 +1888,7 @@ describe('RQTree', function () {
     it('testExistsRemoteFailure', function (done) {
       c.addFile(c.remoteTree, '/testfile', function () {
         c.testShare.invalidateContentCache(c.testTree, '/');
-        c.registerInfoUrl('/', function (url, headers, cb) {
+        c.registerInfoUrl('/', function (options, cb) {
           cb('forced unit test error');
         });
         c.testTree.exists('/testfile', function (err, exists) {
@@ -1900,7 +1903,7 @@ describe('RQTree', function () {
       c.addFile(c.remoteTree, '/testfile', function () {
         c.testShare.invalidateContentCache(c.testTree, '/');
         var errorThrown = false;
-        c.registerInfoUrl('/', function (url, headers, cb) {
+        c.registerInfoUrl('/', function (options, cb) {
           errorThrown = true;
           cb('forced unit test error');
         });
@@ -1918,7 +1921,7 @@ describe('RQTree', function () {
         c.addFile(c.remoteTree, '/testremote.jpg', function () {
           c.addQueuedFile('/testlocal.jpg', function () {
             c.testShare.invalidateContentCache(c.testTree, '/');
-            c.registerInfoUrl('/', function (url, headers, cb) {
+            c.registerInfoUrl('/', function (options, cb) {
               cb('forced unit test error');
             });
             c.testTree.list('/*', function (err, list) {
@@ -1935,7 +1938,7 @@ describe('RQTree', function () {
       c.addCachedFile('/testcached.jpg', function () {
         c.testShare.invalidateContentCache(c.testTree, '/');
         var errorThrown = false;
-        c.registerInfoUrl('/', function (url, headers, cb) {
+        c.registerInfoUrl('/', function (options, cb) {
           errorThrown = true;
           cb('forced unit test error');
         });
@@ -1953,7 +1956,7 @@ describe('RQTree', function () {
           expect(err).toBeFalsy();
           c.testShare.invalidateContentCache(c.testTree, '/');
           var errorThrown = false;
-          c.registerInfoUrl('/', function (url, headers, cb) {
+          c.registerInfoUrl('/', function (options, cb) {
             errorThrown = true;
             cb('forced unit test error');
           });
@@ -1978,7 +1981,7 @@ describe('RQTree', function () {
             c.testTree.open('/testcached.jpg', function (err, file) {
               expect(err).toBeFalsy();
               var errorThrown = false;
-              c.registerUrl('/testcached.jpg', function (url, headers, cb) {
+              c.registerUrl('/testcached.jpg', function (options, cb) {
                 errorThrown = true;
                 cb('forced unit test error');
               });
@@ -2004,7 +2007,7 @@ describe('RQTree', function () {
         c.testTree.open('/testcache.jpg', function (err, file) {
           expect(err).toBeFalsy();
           var errorThrown = false;
-          c.registerUrl('/testcache.jpg', function (url, headers, cb) {
+          c.registerUrl('/testcache.jpg', function (options, cb) {
             errorThrown = true;
             cb('forced unit test error');
           });
@@ -2019,7 +2022,7 @@ describe('RQTree', function () {
     it('testRenameRemoteFailure', function (done) {
       c.addFile(c.remoteTree, '/renameme.jpg', function () {
         c.testShare.invalidateContentCache(c.testTree, '/');
-        c.registerInfoUrl('/', function (url, headers, cb) {
+        c.registerInfoUrl('/', function (options, cb) {
           cb('forced unit test error');
         });
         c.testTree.rename('/renameme.jpg', '/renamed.jpg', function (err) {
@@ -2035,7 +2038,7 @@ describe('RQTree', function () {
       c.addCachedFile('/renameme.jpg', function () {
         c.testShare.invalidateContentCache(c.testTree, '/');
         var errorThrown = false;
-        c.registerInfoUrl('/', function (url, headers, cb) {
+        c.registerInfoUrl('/', function (options, cb) {
           errorThrown = true;
           cb('forced unit test error');
         });
@@ -2053,7 +2056,7 @@ describe('RQTree', function () {
       var now = new Date().getTime();
       var errorThrown = false;
       c.addRemoteFileWithDates('/parseerror.jpg', 'parsed content', now, now, function () {
-        c.registerInfoUrl('/', function (url, headers, cb) {
+        c.registerInfoUrl('/', function (options, cb) {
           errorThrown = true;
           cb(null, 200, 'NOT JSON CONTENT');
         });

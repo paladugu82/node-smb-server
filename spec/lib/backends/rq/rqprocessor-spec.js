@@ -122,7 +122,7 @@ describe('RQProcessor', function () {
 
   describe('Sync', function () {
     var testDotFile = function (path, name, done) {
-      c.registerUrl(Path.join(path, name) + '.json', function (url, headers, cb) {
+      c.registerUrl(Path.join(path, name) + '.json', function (options, cb) {
         cb(null, 200);
       });
       c.testTree.rq.getProcessRequest = function (context, expiration, maxRetries, cb) {
@@ -148,7 +148,7 @@ describe('RQProcessor', function () {
     };
 
     var addLocalCachedFile = function (path, cb) {
-      c.addFile(c.remoteTree, path, function () {
+      c.addRemoteFileWithContent(path, 'remote content', function () {
         c.testTree.open(path, function (err, file) {
           expect(err).toBeFalsy();
           file.cacheFile(function (err) {
@@ -404,7 +404,7 @@ describe('RQProcessor', function () {
             expect(err).toBeFalsy();
             processor.sync(config, function (err) {
               expect(err).toBeFalsy();
-              expect(c.getPathMethodRequestCount('/testnoexist.jpg', 'DELETE')).toEqual(1);
+              expect(c.getDeleteRequestCount('/testnoexist.jpg')).toEqual(1);
               c.expectLocalFileExist('/testnoexist.jpg', false, false, function () {
                 c.remoteTree.exists('/testnoexist.jpg', function (err, exists) {
                   expect(err).toBeFalsy();
@@ -459,7 +459,7 @@ describe('RQProcessor', function () {
           isDelete: true
         }, function (err) {
           expect(err).toBeFalsy();
-          expect(c.getPathMethodRequestCount('/testdelete.jpg', 'DELETE')).toEqual(1);
+          expect(c.getDeleteRequestCount('/testdelete.jpg')).toEqual(1);
           c.expectLocalFileExist('/testdelete.jpg', false, false, function () {
             c.expectQueuedMethod('/', 'testdelete.jpg', false, done);
           });
