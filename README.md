@@ -126,6 +126,8 @@ module. It will also determine the path to use when connecting to the share.
 For example, the URL for connecting to a share whose name is `fs` would be 
 `smb://localhost:8445/fs`, and the server will `require` the share from `lib/backends/fs/share`.
 * _description_: An arbitrary value that will be displayed as the smb mount's description.
+* _unicodeNormalizeForm_: The unicode form that the share should use to normalize unicode paths. Valid values are 
+"nkfd", "none", or "nkfc". Default: nkfd.
 
 See individual [backend documentation][BACKENDS] for share-specific 
 configurations.

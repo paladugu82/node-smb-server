@@ -157,9 +157,6 @@ following:
 [Request Queue][RQ] before giving up and removing the entry.
 * _retryDelay_: The amount of time, in milliseconds, that the [Request Queue Processor][RQP] will wait before retrying
 a failed [Request Queue][RQ] entry.
-* _noUnicodeNormalize_: If `true`, the backend won't normalized unicode characters between the remote share and local
-share. If `false`, the backend will normalize a file's path when downloading it to the local share, and convert it to its
-original encoding when uploading to the remote share. Default: false.
 * _cacheInfoOnly_: If `true`, the backend won't actually perform create, delete, or updates on the local version of a
 file. It will only manage the file's [work data][WORK]. Default: false.
 * _local_: Configuration of the share that the backend will use as its local share.
