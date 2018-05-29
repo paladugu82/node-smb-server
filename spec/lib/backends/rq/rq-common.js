@@ -321,6 +321,10 @@ RQCommon.prototype.registerUrl = function (path, cb) {
   this.request.registerUrl(this.urlPrefix + this.remotePrefix + path, cb);
 };
 
+RQCommon.prototype.registerCreateAssetUrl = function (cb) {
+  this.request.registerUrl(RQCommon.getFullRemoteContentPrefix() + this.remotePrefix + '.createasset.html', cb);
+};
+
 RQCommon.prototype.unregisterUrl = function (path) {
   this.request.unregisterUrl(this.urlPrefix + this.remotePrefix + path);
 };
@@ -348,6 +352,10 @@ RQCommon.prototype.setRemoteFileReadOnly = function (path, readOnly, cb) {
 
 RQCommon.prototype.setRemoteFileLastModified = function (path, lastModified, cb) {
   this.mockRepo.setLastModified(path, lastModified, cb);
+};
+
+RQCommon.prototype.setRemoteFileCheckedOut = function (path, checkedOut, cb) {
+  this.mockRepo.setCheckedOut(path, checkedOut, cb);
 };
 
 RQCommon.prototype.getFileContent = function (file, cb) {

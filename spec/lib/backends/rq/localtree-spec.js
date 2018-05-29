@@ -161,6 +161,30 @@ describe('LocalTreeTests', function () {
         });
       });
     });
+
+    it('testSetFileConflict', function (done) {
+      c.addCachedFile('/updatecacheexists.jpg', function () {
+        c.localTree.open('/updatecacheexists.jpg', function (err, file) {
+          expect(err).toBeFalsy();
+          expect(file.isConflict()).toBeFalsy();
+          c.localTree.setFileConflict('/updatecacheexists.jpg', true, function (err) {
+            expect(err).toBeFalsy();
+            c.localTree.open('/updatecacheexists.jpg', function (err, file) {
+              expect(err).toBeFalsy();
+              expect(file.isConflict()).toBeTruthy();
+              c.localTree.setFileConflict('/updatecacheexists.jpg', false, function (err) {
+                expect(err).toBeFalsy();
+                c.localTree.open('/updatecacheexists.jpg', function (err, file) {
+                  expect(err).toBeFalsy();
+                  expect(file.isConflict()).toBeFalsy();
+                  done();
+                });
+              });
+            });
+          });
+        });
+      });
+    });
   });
 
   describe('CreateFile', function () {

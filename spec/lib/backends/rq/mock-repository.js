@@ -134,6 +134,13 @@ MockRepository.prototype.setSize = function (path, size, cb) {
   }, cb);
 };
 
+MockRepository.prototype.setCheckedOut = function (path, checkedOut, cb) {
+  _updateRecord.call(this, path, function (data) {
+    data.properties['cq:drivelock'] = checkedOut;
+    return data;
+  }, cb);
+}
+
 MockRepository.prototype.delete = function (path, cb) {
   this.db.remove({path: path}, {}, function (err) {
     expect(err).toBeFalsy();

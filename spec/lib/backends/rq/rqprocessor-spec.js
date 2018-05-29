@@ -276,6 +276,38 @@ describe('RQProcessor', function () {
       });
     });
 
+    it('testSyncCheckedOutConflict', function (done) {
+      // simulate a save operation that moves the file. test the case where the api does not enforce the checkout
+      // flag. ensure that an error is thrown on sync and that the file is in conflict afterward.
+      c.addCachedFile('/testcheckoutconflict.jpg', function () {
+        c.setRemoteFileCheckedOut('/testcheckoutconflict.jpg', true, function () {
+          c.testTree.rename('/testcheckoutconflict.jpg', '/testcheckoutconflict2.jpg', function (err) {
+            expect(err).toBeFalsy();
+            c.testTree.rename('/testcheckoutconflict2.jpg', '/testcheckoutconflict.jpg', function (err) {
+              expect(err).toBeFalsy();
+              c.expectQueuedMethod('/', 'testcheckoutconflict.jpg', 'POST', function () {
+                c.expectQueuedMethod('/', 'testcheckoutconflict2.jpg', false, function () {
+                  processor.sync(config, function (err) {
+                    c.expectQueuedMethod('/', 'testcheckoutconflict.jpg', false, function () {
+                      expectSyncEvent('syncfileerr', {path: '/testcheckoutconflict.jpg', method: 'PUT', err: jasmine.any(String)});
+                      c.testTree.open('/testcheckoutconflict.jpg', function (err, file) {
+                        expect(err).toBeFalsy();
+                        file.setLength(10, function (err) {
+                          expect(err).toBeFalsy();
+                          expectSyncEvent('syncconflict', {path: '/testcheckoutconflict.jpg'});
+                          done();
+                        });
+                      });
+                    });
+                  });
+                });
+              });
+            });
+          });
+        });
+      });
+    });
+
     it('testSyncEncoded', function (done) {
       var remoteEncodedName = '/%EC%9D%B4%EB%91%90%E5%90%8F%E8%AE%80.jpg';
       var remoteFileName = decodeURI(remoteEncodedName);
