@@ -15,6 +15,7 @@ var utils = require('../../../../lib/utils');
 
 function MockRepository() {
   this.db = new Datastore();
+  this.user = 'tester';
   this.root = {
     path: '/',
     entity: MockRepository.getFolderData('assets')
@@ -49,6 +50,10 @@ MockRepository.toDateString = function (timestamp) {
   return new Date(timestamp).toISOString();
 };
 
+MockRepository.prototype.setUser = function (user) {
+  this.user = user;
+};
+
 MockRepository.prototype.addEntity = function (path, entity, cb) {
   var parent = utils.getParentPath(path);
 
@@ -62,13 +67,22 @@ MockRepository.prototype.getEntity = function (path, cb) {
   var self = this;
   function getDoc(docCb) {
     if (path == '/') {
-      docCb(self.root);
+      docCb(extendEntity(self.root));
     } else {
       self.db.findOne({path: path}, function (err, doc) {
         expect(err).toBeFalsy();
-        docCb(doc);
+        docCb(extendEntity(doc));
       });
     }
+  }
+  function extendEntity(entity) {
+    if (entity != null && entity.entity['class'] != 'assets/folder') {
+      entity.entity.properties['asset:readonly'] = false;
+      if (entity.entity.properties['cq:drivelock']) {
+        entity.entity.properties['asset:readonly'] = (self.user != entity.entity.properties['cq:drivelock']);
+      }
+    }
+    return entity;
   }
   getDoc(function (doc) {
     if (doc) {
@@ -77,7 +91,7 @@ MockRepository.prototype.getEntity = function (path, cb) {
         self.db.find({parent: path}, function (err, docs) {
           expect(err).toBeFalsy();
           for (var i = 0; i < docs.length; i++) {
-            doc.entities.push(docs[i].entity);
+            doc.entities.push(extendEntity(docs[i]).entity);
           }
           cb(doc);
         });
@@ -106,13 +120,6 @@ function _updateRecord(path, updateFunc, cb) {
   });
 }
 
-MockRepository.prototype.setReadOnly = function (path, readOnly, cb) {
-  _updateRecord.call(this, path, function (data) {
-    data.properties['asset:readonly'] = readOnly;
-    return data;
-  }, cb);
-};
-
 MockRepository.prototype.setCreated = function (path, created, cb) {
   _updateRecord.call(this, path, function (data) {
     data.properties['jcr:created'] = MockRepository.toDateString(created);
@@ -134,9 +141,9 @@ MockRepository.prototype.setSize = function (path, size, cb) {
   }, cb);
 };
 
-MockRepository.prototype.setCheckedOut = function (path, checkedOut, cb) {
+MockRepository.prototype.setCheckedOut = function (path, user, cb) {
   _updateRecord.call(this, path, function (data) {
-    data.properties['cq:drivelock'] = checkedOut;
+    data.properties['cq:drivelock'] = user;
     return data;
   }, cb);
 }

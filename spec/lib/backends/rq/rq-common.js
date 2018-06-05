@@ -346,16 +346,16 @@ RQCommon.prototype.registerPathStatusCode = function (path, statusCode) {
   this.request.registerUrlStatusCode(url, statusCode);
 };
 
-RQCommon.prototype.setRemoteFileReadOnly = function (path, readOnly, cb) {
-  this.mockRepo.setReadOnly(path, readOnly, cb);
+RQCommon.prototype.setRemoteRepositoryUser = function (user) {
+  this.mockRepo.setUser(user);
 };
 
 RQCommon.prototype.setRemoteFileLastModified = function (path, lastModified, cb) {
   this.mockRepo.setLastModified(path, lastModified, cb);
 };
 
-RQCommon.prototype.setRemoteFileCheckedOut = function (path, checkedOut, cb) {
-  this.mockRepo.setCheckedOut(path, checkedOut, cb);
+RQCommon.prototype.setRemoteFileCheckedOut = function (path, userName, cb) {
+  this.mockRepo.setCheckedOut(path, userName, cb);
 };
 
 RQCommon.prototype.getFileContent = function (file, cb) {

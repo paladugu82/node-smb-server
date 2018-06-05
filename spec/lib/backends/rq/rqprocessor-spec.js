@@ -280,7 +280,7 @@ describe('RQProcessor', function () {
       // simulate a save operation that moves the file. test the case where the api does not enforce the checkout
       // flag. ensure that an error is thrown on sync and that the file is in conflict afterward.
       c.addCachedFile('/testcheckoutconflict.jpg', function () {
-        c.setRemoteFileCheckedOut('/testcheckoutconflict.jpg', true, function () {
+        c.setRemoteFileCheckedOut('/testcheckoutconflict.jpg', 'unittestuser', function () {
           c.testTree.rename('/testcheckoutconflict.jpg', '/testcheckoutconflict2.jpg', function (err) {
             expect(err).toBeFalsy();
             c.testTree.rename('/testcheckoutconflict2.jpg', '/testcheckoutconflict.jpg', function (err) {
@@ -302,6 +302,23 @@ describe('RQProcessor', function () {
                   });
                 });
               });
+            });
+          });
+        });
+      });
+    });
+
+    it('testSyncCheckedOutBySameUser', function (done) {
+      // simulate the case where the user that has checked out the asset is modifying it.
+      c.setRemoteRepositoryUser('unittestuser');
+      c.addLocallyModifiedFile('/testcheckoutuser.jpg', function () {
+        c.setRemoteFileCheckedOut('/testcheckoutuser.jpg', 'unittestuser', function () {
+          processor.sync(config, function (err) {
+            expect(err).toBeFalsy();
+            c.expectQueuedMethod('/', 'testcheckoutuser.jpg', false, function () {
+              expectSyncEvent('syncfilestart', {path: '/testcheckoutuser.jpg', method: 'PUT'});
+              expectSyncEvent('syncfileend', {path: '/testcheckoutuser.jpg', method: 'PUT'});
+              done();
             });
           });
         });
