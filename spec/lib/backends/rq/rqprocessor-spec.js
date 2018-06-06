@@ -166,7 +166,7 @@ describe('RQProcessor', function () {
           c.expectLocalFileExist('/testfile', true, false, function () {
             c.expectQueuedMethod('/', 'testfile', false, function () {
               expectSyncEvent('syncfilestart', {path: '/testfile', method: 'POST'});
-              expectSyncEvent('syncfileprogress', {path: '/testfile', read: jasmine.any(Number), total: jasmine.any(Number), rate: jasmine.any(Number), elapsed: jasmine.any(Number)});
+              //expectSyncEvent('syncfileprogress', {path: '/testfile', read: jasmine.any(Number), total: jasmine.any(Number), rate: jasmine.any(Number), elapsed: jasmine.any(Number)});
               expectSyncEvent('syncfileend', {path: '/testfile', method: 'POST'});
               done();
             });
@@ -206,7 +206,7 @@ describe('RQProcessor', function () {
               expect(err).toBeFalsy();
               c.expectQueuedMethod('/', 'testfile', false, function () {
                 expectSyncEvent('syncfilestart', {path: '/testfile', method: 'PUT'});
-                expectSyncEvent('syncfileprogress', {path: '/testfile', read: jasmine.any(Number), total: jasmine.any(Number), rate: jasmine.any(Number), elapsed: jasmine.any(Number)});
+                //expectSyncEvent('syncfileprogress', {path: '/testfile', read: jasmine.any(Number), total: jasmine.any(Number), rate: jasmine.any(Number), elapsed: jasmine.any(Number)});
                 expectSyncEvent('syncfileend', {path: '/testfile', method: 'PUT'});
                 done();
               });

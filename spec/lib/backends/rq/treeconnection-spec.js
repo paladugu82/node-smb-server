@@ -104,4 +104,54 @@ describe('RQTreeConnection', function () {
       done();
     }});
   });
+
+  it('testCreateAssetOnChunk', function (done) {
+    var date = new Date().getTime();
+    c.fs.createEntityWithDatesSync('/uploadassetchunk.jpg', false, '0123456789', date, date);
+    c.fs.truncate('/uploadassetchunk.jpg', 10 * 1024 * 1024, function (err) {
+      expect(err).toBeFalsy();
+      c.testShare.config.chunkUploadSize = 1;
+      c.testShare.emit('createasset', {
+        context: c.testContext,
+        options: {
+          path: '/uploadassetchunk_remote.jpg',
+          file: '/uploadassetchunk.jpg',
+          offset:  0,
+          onChunk: function (nextOffset, totalSize, callback) {
+            expect(nextOffset).toEqual(1024 * 1024);
+            expect(totalSize).toEqual(10 * 1024 * 1024);
+            callback(true);
+          }
+        }, callback: function (err) {
+          expect(err).toBeFalsy();
+          done();
+        }
+      });
+    });
+  });
+
+  it('testCreateAssetOnChunkOffset', function (done) {
+    var date = new Date().getTime();
+    c.fs.createEntityWithDatesSync('/uploadassetchunk.jpg', false, '0123456789', date, date);
+    c.fs.truncate('/uploadassetchunk.jpg', 10 * 1024 * 1024, function (err) {
+      expect(err).toBeFalsy();
+      c.testShare.config.chunkUploadSize = 1;
+      c.testShare.emit('createasset', {
+        context: c.testContext,
+        options: {
+          path: '/uploadassetchunk_remote.jpg',
+          file: '/uploadassetchunk.jpg',
+          fromOffset:  1024 * 1024,
+          onChunk: function (nextOffset, totalSize, callback) {
+            expect(nextOffset).toEqual(2 * 1024 * 1024);
+            expect(totalSize).toEqual(10 * 1024 * 1024);
+            callback(true);
+          }
+        }, callback: function (err) {
+          expect(err).toBeFalsy();
+          done();
+        }
+      });
+    });
+  });
 });

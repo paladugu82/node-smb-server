@@ -27,7 +27,7 @@
 * [Folder Handling][FOLDERS]
 * [Working Data][WORK]
 * [File Dates][DATES]
-* [Confict Handling][CONFLICTS]
+* [Conflict Handling][CONFLICTS]
 * [File Rename Considerations][RENAME]
 
 ## Overview
@@ -110,34 +110,6 @@ the backend's [Configiration][CONFIG].
 
 These events are sent by the processor.
 
-* _syncabort_: The processor has canceled an in-progress upload.
-  * (Object) _data_: Data for the event.
-    * (String) _path_: The server path of the file.
-    * (String) _file_: The full local path of the file.
-* _syncerr_: Sent if the processor encounters an error while uploading a file.
-  * (Object) _data_: Data for the event.
-    * (String) _path_: The server path of the file.
-    * (String) _file_: The full local path of the file.
-    * (String) _method_: HTTP method of the operation.
-    * (String) _err_: The error that occurred.
-* _syncend_: A file has finished processing a file successfully.
-  * (Object) _data_: Data for the event.
-    * (String) _path_: The server path of the file.
-    * (String) _file_: The full local path of the file.
-    * (String) _method_: HTTP method of the operation.
-* _syncstart_: The processor began processing a file.
-  * (Object) _data_: Data for the event.
-    * (String) _path_: The server path of the file.
-    * (String) _file_: The full local path of the file.
-    * (String) _method_: HTTP method of the operation.
-* _syncstart_: The processor began processing a file.
-  * (Object) _data_: Data for the event.
-    * (String) _path_: The server path of the file.
-    * (String) _file_: The full local path of the file.
-    * (Number) _read_: The number of bytes transferred so far. 
-    * [Number] _total_: The total number of bytes to transfer. Will be missing or 0 if total size is not available. 
-    * (Number) _rate_: The rate, in bytes per second, that the file is transferring. 
-    * (Number) _elapsed_: The amount of time, in milliseconds, that have elapsed since the file started to transfer.
 * _error_: The processor encountered a general error.
   * (Error) _err_: The error that occurred.
 * _purged_: One or more files failed to transfer after the [configured][CONFIG] number of attempts.
@@ -210,7 +182,7 @@ queue.
 The following events are handled by the backend when sent to the SMB Server's `processEvent` method. The list includes 
 the name of the event and the information its expects as `processEvent`'s data parameter.
 
-* _uploadasset_: Instructs the backend to upload a file from its local share to its remote share. The backend will
+* _uploadasset_: Instructs the backend to upload a file from its request queue to its remote share. The backend will
 detect whether or not the file exists in the remote share and either create or update it accordingly.
   * (Object) _data_: Data for the event.
     * (String) _path_: The path of the file to upload.
@@ -252,6 +224,38 @@ all the additional options required to create a successful request
   * (Function) _callback_: Will be invoked with the response of the request.
     * (Error) _err_: Will be set to the error if one occurred.
     * (HTTPResponse) _res_: The node.js HTTP Response object representing the request's response. 
+* _createasset_: Creates a new asset in the remote repository from a local path.
+  * (Object) _data_: Data for the event.
+    * (String) _path_: Path of the file as it should appear in the remote repository.
+    * (String) _file_: Full path to the local file to upload.
+    * [Integer] _fromOffset_: Optional value indicating the local file's byte offset from which the upload should begin.
+    * [Function] _onChunk_: Optional callback that will be invoked when a chunk of the file finishes uploading. The 
+    callback will be given the following arguments:
+      * (Integer) _nextOffset_: The next offset to be transferred. If this value equals the _totalSize_, then the entire
+      file has been transferred.
+      * (Integer) _totalSize_: The total size of the file to be transferred, in bytes.
+      * (Function) _callback_: Should be invoked when the caller has finished processing the event.The function accepts
+      the following parameters:
+        * (Boolean) _cancel_: If true, the backend will cease uploading chunks of the file.
+  * Function) _callback_: Will be invoked when the operation is complete.
+    * (Error) _err_: Will be set to the error if one occurred.
+* _deleteasset_: Deletes an asset from the remote repository.
+  * (Object) _data_: Data for the event.
+    * (String) _path_: Remote path of an asset.
+  * (Function) _callback_: Will be invoked when the operation is complete.
+    * (Error) _err_: Will be set to the error if one occurred.
+* _pathexists_: Determines if a given path (asset or folder) already exists in the remote repository.
+  * (Object) _data_: Data for the event.
+    * (String) _path_: Remote path of an asset or folder.
+  * (Function) _callback_: Will be invoked with the result of the operation.
+    * (Error) _err_: Will be set to the error if one occurred.
+    * (Boolean) _exists_: `true` if the path exists, otherwise `false`.
+* _createdirectory_: Creates a new directory in the remote repository.
+  * (Object) _data_: Data for the event.
+    * (String) _path_: Remote path of the folder to create.
+  * (Function) _callback_: Will be invoked when the operation is complete.
+    * (Error) _err_: Will be set to the error if one occurred.
+  
     
 ## Download Strategy
 

@@ -100,7 +100,6 @@ only be sent a maximum of once every 30 seconds.
 * _downloadprogress_: Sent on a regular interval (approximately once every second) while a file is downloading.
   * (Object) _data_: Data for the event.
     * (String) _path_: The downloading file's path.
-    * (String) _serverPath_: Full path to the file in the remote JCR. This is typically the file's full URL.
     * (Number) _read_: Number of bytes that have been downloaded so far. 
     * (Number) _total_: Total number of bytes to download. **Note:** A value of 0 indicates that the total file size is
     unknown.
@@ -115,7 +114,6 @@ only be sent a maximum of once every 30 seconds.
 * _syncfilestart_: Emitted when the backend begins uploading a file to JCR.
   * (Object) _data_: Data for the event.
     * (String) _path_: Server path to the file being uploaded.
-    * (String) _file_: Full path to the local file being uploaded.
     * (String )_method_: The HTTP method being used to upload the file.
 * _syncfileend_: Sent when the backend finishes uploading a file to JCR.
   * (Object) _data_: Data for the event.
@@ -132,7 +130,6 @@ share.
 * _syncfileprogress_: Sent on a regular interval (approximately once every second) while a file is uploading.
   * (Object) _data_: Data for the event.
     * (String) _path_: The uploading file's path.
-    * (String) _serverPath_: Full path to the file in the remote JCR. This is typically the file's full URL.
     * (Number) _read_: Number of bytes that have been uploaded so far. 
     * (Number) _total_: Total number of bytes to upload. **Note:** A value of 0 indicates that the total file size is
     unknown.
