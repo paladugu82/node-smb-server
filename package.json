@@ -1,7 +1,7 @@
 {
   "name": "node-smb-server",
   "description": "A Pure JavaScript SMB Server Implementation",
-  "version": "1.0.16",
+  "version": "1.0.17",
   "keywords": [
     "SMB",
     "CIFS",
