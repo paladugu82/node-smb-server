@@ -46,6 +46,8 @@ A common use-case for using this setting would be if the server is using a self-
 certificate chain is not correctly configured. Default: true.
 * _tmpPath_: If specified, this local path will be used to store all [temporary files][TEMP] that the server processes.
 Note that if this value is set, the directory will _not_ be automatically cleaned up. Default: empty.
+* _tmpDir_: If specified, this directory will be used as the managed temp file location. This will replace the OS's
+default temp directory (i.e. `/var/tmp`). Unlike _tmpPath_, this option will preserve automatic cleanup of temp files.
 * _options_: An Object that will be used as the options for the node.js [request][REQUEST] module when sending HTTP 
 requests to the JCR. Default: empty.
       
