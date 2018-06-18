@@ -6,6 +6,7 @@
 [STANDALONE]: #running-a-standalone-server
 [USERMGMT]: #user-management
 [CONFIGURATION]: #configuration
+[LOGGING]: #logging
 [CUSTOMBACKEND]: #developing-a-custom-backend
 [TESTING]: #unit-testing
 [MODULE]: #smb-server-as-a-module
@@ -35,6 +36,7 @@ backend, similar to Samba's VFS
 1. [Running a Standalone Server][STANDALONE]
 1. [User Management][USERMGMT]
 1. [Configuration][CONFIGURATION]
+1. [Logging][LOGGING]
 1. [Developing a Custom Backend][CUSTOMBACKEND]
 1. [Unit Testing][TESTING]
 1. [SMB Server as a Module][MODULE]
@@ -159,6 +161,18 @@ The following is a sample `shares` configuration element. Each share's element n
     },
 ...
 ```
+
+## Logging
+
+The SMB Server uses [winston](https://github.com/winstonjs/winston) for logging, and its logging configuration file
+supports the following:
+
+* _(root value)_: Each root element will become a new logger, whose name will be the element's name.
+  * _file_: If specified, the logger will have a `File` transport, meaning that messages sent to the logger will be written
+  to a file. The value of the _file_ element will be sent as-is to `winston's` transport.
+  * _console_: If specified, the logger will have a `Console` transport, meaning that messages sent to the logger will be
+  written to the console. The value of the _console_ element will be sent as-is to `winston's` transport.
+  * _config_: If specified, the logger definition will reuse the definition whose key matches the specified value.  
 
 ## Developing a custom backend
 
