@@ -161,8 +161,6 @@ These are the events that the backend sends as `serverEvent`.
   * (Object) _data_: Data for the event.
     * (Number) _maxCacheSize_: Maximum size, in bytes, that the cache exceeded.
     * (Number) _cacheSize_: Current size of the cache, in bytes.
-* _requestqueueinit_: Sent when the backend has created the request queue instance that it will be using.
-  * ([RequestQueue][RQ]) _rq_: The backend's request queue.
 * _syncerr_: There was a general error encountered during the upload process.
   * (Object) _data_: Data for the event.
     * (Error) _err_: Details about the error message.
@@ -176,6 +174,8 @@ queue.
 * _openasset_: Emitted when the backend receives instruction that one of its files needs to be opened.
   * (Object) _data_: Data for the event.
     * (String) _path_: Path to the file to open.
+* _modificationqueueitemchanged_: Sent when an item in the backend's modification queue changes. This is simply a 
+forward of the [Request Queue's][RQ] _requestchanged_ event. Please see event details there.
 
 #### Incoming
 
@@ -255,7 +255,13 @@ all the additional options required to create a successful request
     * (String) _path_: Remote path of the folder to create.
   * (Function) _callback_: Will be invoked when the operation is complete.
     * (Error) _err_: Will be set to the error if one occurred.
-  
+* _getmodificationqueue_: Retrieves all paths that are currently queued for modification.
+  * (Function) _callback_: Will be invoked when the operation is complete.
+    * (Error) _err_: Will be set to the error if one occurred.
+    * (Array) _queued_: List of objects containing information about each queued modification.
+      * (String) _path_: Remote path of the modified asset.
+      * (String) _method_: HTTP method representing the specified queued modification (i.e. `POST`, `PUT`, `DELETE`).
+      * (Number) _timestamp_: Unix timestamp of the time that the item was queued.
     
 ## Download Strategy
 
