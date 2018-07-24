@@ -1,7 +1,7 @@
 {
   "default": {
     "console": {
-      "level": "info",
+      "level": "warn",
       "colorize": true,
       "label": "SRV"
     },
@@ -52,7 +52,7 @@
   },
   "request": {
     "console": {
-      "level": "info",
+      "level": "warn",
       "colorize": true,
       "label": "REQUEST"
     },
