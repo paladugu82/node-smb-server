@@ -155,7 +155,7 @@ describe('RQFile', function () {
                       expect(err).toBeFalsy();
                       expect(localFile.created()).toEqual(newLocalFile.created());
                       expect(localFile.lastModified()).toEqual(newLocalFile.lastModified());
-                      expect(c.testShare.emit.calls.length).toEqual(2);
+                      expect(c.testShare.emit.calls.length).toEqual(3); // downloadstart, downloadend, modificationqueueitemchanged
                       done();
                     });
                   });
